@@ -4,6 +4,7 @@ import {
     MessageFlags,
     SlashCommandBuilder,
 } from "discord.js";
+import { env } from "../../config";
 import { ttsService } from "../../services/tts";
 
 const LANGUAGES = [
@@ -80,7 +81,7 @@ export const ttsCommand = {
                 }
 
                 const message = interaction.options.getString("message", true);
-                const lang = interaction.options.getString("language") ?? "en";
+                const lang = interaction.options.getString("language") ?? env.DEFAULT_LANGUAGE;
                 const slow = interaction.options.getBoolean("slow") ?? false;
 
                 await interaction.deferReply();

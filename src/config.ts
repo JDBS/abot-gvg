@@ -5,6 +5,7 @@ const envSchema = z.object({
     CLIENT_ID: z.string().min(1),
     GUILD_ID: z.string().min(1),
     NODE_ENV: z.enum(["development", "production"]).default("development"),
+    DEFAULT_LANGUAGE: z.string().default("es"),
 });
 
 export const env = envSchema.parse(process.env);

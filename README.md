@@ -32,9 +32,10 @@ DISCORD_TOKEN=your_bot_token
 CLIENT_ID=your_discord_application_client_id
 GUILD_ID=your_development_guild_id
 NODE_ENV=development
+DEFAULT_LANGUAGE=es
 ```
 
-`DISCORD_TOKEN`, `CLIENT_ID`, and `GUILD_ID` are required. `NODE_ENV` defaults to `development` and may be set to `production`.
+`DISCORD_TOKEN`, `CLIENT_ID`, and `GUILD_ID` are required. `NODE_ENV` defaults to `development` and may be set to `production`. `DEFAULT_LANGUAGE` defines the default ISO 639-1 language code used for `/tts speak` when no language choice is provided (defaults to `es`).
 
 ## Development
 
