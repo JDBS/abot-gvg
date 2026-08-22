@@ -8,6 +8,7 @@
         "dev:watch": "bun run deploy && bun --watch src/index.ts",
         "deploy": "bun run src/deploy-commands.ts",
         "build": "tsc",
+        "test": "tsx --test src/**/*.test.ts",
         "lint": "biome lint .",
         "format": "biome format --write .",
         "check": "biome check --write ."

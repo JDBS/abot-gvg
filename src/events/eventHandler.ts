@@ -1,30 +1,16 @@
 import type { VoiceBasedChannel } from "discord.js";
-import { z } from "zod";
 import { ttsService } from "../services/tts";
 import { logger } from "../utils/logger";
-import { timeConversion } from "../utils/timeConversion";
 import eventListJson from "./eventList.json";
+import type { ProcessedTimeEvent } from "./eventSchemas";
+import { parseAndSortEvents, prepareScheduledEvents } from "./eventUtils";
 
-export const TimeEventDetailsSchema = z.object({
-    type: z.literal("time"),
-    t: z.string(),
-});
+export * from "./eventSchemas";
+export * from "./eventUtils";
 
-export const GvGEventSchema = z.object({
-    tts: z.string(),
-    event: TimeEventDetailsSchema,
-});
-
-export const EventListSchema = z.array(GvGEventSchema);
-
-export type GvGEvent = z.infer<typeof GvGEventSchema>;
-
-export interface ProcessedTimeEvent {
-    tts: string;
-    remainingSeconds: number;
-    rawTime: string;
-}
-
+/**
+ * State of active timer per guild.
+ */
 interface GuildTimerState {
     channel: VoiceBasedChannel;
     startTime: number;
@@ -33,32 +19,30 @@ interface GuildTimerState {
     events: ProcessedTimeEvent[];
 }
 
+/**
+ * Service managing time-based GvG event execution per Discord guild.
+ */
 export class EventHandler {
     private activeTimers = new Map<string, GuildTimerState>();
 
     /**
      * Loads and validates event list using Zod, converts time strings to seconds,
      * and sorts events in descending order of remaining time (30m -> 0m).
+     *
+     * @param data - Optional event data input (defaults to eventList.json).
+     * @returns List of processed and sorted GvG time events.
      */
     public loadEvents(data: unknown = eventListJson): ProcessedTimeEvent[] {
-        const validatedEvents = EventListSchema.parse(data);
-
-        const processed: ProcessedTimeEvent[] = validatedEvents.map((item) => ({
-            tts: item.tts,
-            remainingSeconds: timeConversion.stringToSeconds(item.event.t),
-            rawTime: item.event.t,
-        }));
-
-        // Sort descending by remainingSeconds (from 30m / 1800s down to 0m / 0s)
-        processed.sort((a, b) => b.remainingSeconds - a.remainingSeconds);
-
-        return processed;
+        return parseAndSortEvents(data);
     }
 
     /**
-     * Starts the event sequence for a given voice channel.
-     * @param channel The Discord voice channel to announce TTS messages in.
-     * @param offsetSeconds Optional start offset in seconds (+ delays start, - starts ahead).
+     * Starts the GvG event sequence for a given voice channel.
+     * Cancels any previously running timer for the same guild.
+     *
+     * @param channel - The Discord voice channel to announce TTS messages in.
+     * @param offsetSeconds - Optional start offset in seconds (+ delays start, - starts ahead).
+     * @returns List of processed GvG events scheduled for execution.
      */
     public async start(
         channel: VoiceBasedChannel,
@@ -70,14 +54,12 @@ export class EventHandler {
         this.stop(guildId);
 
         const events = this.loadEvents();
-        const firstEvent = events[0];
-        if (!firstEvent) {
+        if (events.length === 0) {
             logger.warn("No events found in eventList.json to schedule.");
             return [];
         }
 
-        // maxSeconds is the starting point of GvG (e.g. 30m = 1800s)
-        const maxSeconds = firstEvent.remainingSeconds;
+        const scheduledEvents = prepareScheduledEvents(events, offsetSeconds);
         const timeouts: ReturnType<typeof setTimeout>[] = [];
         const startTime = Date.now();
 
@@ -95,19 +77,7 @@ export class EventHandler {
             `Starting GvG EventHandler in guild "${channel.guild.name}" (Channel: "${channel.name}") with offset ${offsetSeconds}s`,
         );
 
-        for (const event of events) {
-            // Elapsed time required for this event relative to match start (30m -> 0s elapsed)
-            const targetElapsedSeconds = maxSeconds - event.remainingSeconds;
-            // Delay in seconds from now, accounting for start offset
-            const delaySeconds = targetElapsedSeconds + offsetSeconds;
-
-            if (delaySeconds < 0) {
-                logger.info(
-                    `Skipping event "${event.tts}" (${event.rawTime}) as delay is in the past (${delaySeconds}s)`,
-                );
-                continue;
-            }
-
+        for (const { event, delaySeconds } of scheduledEvents) {
             const timeoutId = setTimeout(async () => {
                 try {
                     logger.info(
@@ -130,6 +100,8 @@ export class EventHandler {
 
     /**
      * Stops and cancels all active timeouts for a guild.
+     *
+     * @param guildId - The Discord guild ID.
      */
     public stop(guildId: string): void {
         const state = this.activeTimers.get(guildId);
@@ -145,6 +117,9 @@ export class EventHandler {
 
     /**
      * Checks if a timer is currently active for a guild.
+     *
+     * @param guildId - The Discord guild ID.
+     * @returns True if a timer is running for the specified guild.
      */
     public isRunning(guildId: string): boolean {
         return this.activeTimers.has(guildId);

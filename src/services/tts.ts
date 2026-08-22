@@ -1,5 +1,4 @@
 import {
-    type AudioPlayer,
     AudioPlayerStatus,
     createAudioPlayer,
     createAudioResource,
@@ -11,37 +10,27 @@ import {
 } from "@discordjs/voice";
 import type { VoiceBasedChannel } from "discord.js";
 import ffmpegPath from "ffmpeg-static";
-import * as googleTTS from "google-tts-api";
 import { logger } from "../utils/logger";
+import { type GuildTTSState, generateTTSQueueItems, type TTSOptions } from "./ttsUtils";
+
+export * from "./ttsUtils";
 
 if (ffmpegPath) {
     process.env.FFMPEG_PATH = ffmpegPath;
 }
 
-export interface TTSOptions {
-    lang?: string;
-    slow?: boolean;
-}
-
-interface QueueItem {
-    url: string;
-    text: string;
-}
-
-interface GuildTTSState {
-    player: AudioPlayer;
-    connection: VoiceConnection;
-    queue: QueueItem[];
-    isPlaying: boolean;
-    idleTimeout?: ReturnType<typeof setTimeout>;
-}
-
+/**
+ * Singleton service for managing Text-To-Speech playback in Discord voice channels.
+ */
 export class TTSService {
     private static instance: TTSService;
     private states = new Map<string, GuildTTSState>();
 
     private constructor() {}
 
+    /**
+     * Gets the singleton instance of TTSService.
+     */
     public static getInstance(): TTSService {
         if (!TTSService.instance) {
             TTSService.instance = new TTSService();
@@ -50,7 +39,11 @@ export class TTSService {
     }
 
     /**
-     * Joins or gets existing voice connection for a channel.
+     * Joins or gets an existing voice connection for a given voice channel.
+     *
+     * @param channel - The Discord voice channel to join.
+     * @returns Promise resolving to active VoiceConnection.
+     * @throws {Error} If connection fails to establish within timeout.
      */
     public async joinChannel(channel: VoiceBasedChannel): Promise<VoiceConnection> {
         const guildId = channel.guild.id;
@@ -99,7 +92,12 @@ export class TTSService {
     }
 
     /**
-     * Converts message text to speech and queues audio playback.
+     * Converts message text to speech and queues audio playback in the specified voice channel.
+     *
+     * @param channel - The Discord voice channel to speak in.
+     * @param text - Text message to convert to speech.
+     * @param options - Optional language and speech speed configuration.
+     * @returns Number of audio chunks queued for playback.
      */
     public async speak(
         channel: VoiceBasedChannel,
@@ -114,33 +112,20 @@ export class TTSService {
             throw new Error("Voice state not initialized.");
         }
 
-        const lang = options.lang || "es";
-        const slow = options.slow || false;
-
-        // google-tts-api returns URLs split into chunks < 200 chars
-        const audioResults = googleTTS.getAllAudioUrls(text, {
-            lang,
-            slow,
-            host: "https://translate.google.com",
-            splitPunct: ".,?:;!",
-        });
-
-        for (const item of audioResults) {
-            state.queue.push({
-                url: item.url,
-                text: item.shortText || text,
-            });
-        }
+        const items = generateTTSQueueItems(text, options);
+        state.queue.push(...items);
 
         if (!state.isPlaying) {
             this.processQueue(guildId);
         }
 
-        return audioResults.length;
+        return items.length;
     }
 
     /**
-     * Stops playback and clears queue for a guild.
+     * Stops current audio playback and clears the queue for a guild.
+     *
+     * @param guildId - The Discord guild ID.
      */
     public stop(guildId: string): void {
         const state = this.states.get(guildId);
@@ -152,7 +137,9 @@ export class TTSService {
     }
 
     /**
-     * Leaves voice channel and cleans up state for a guild.
+     * Leaves the voice channel and cleans up all state for a guild.
+     *
+     * @param guildId - The Discord guild ID.
      */
     public leave(guildId: string): void {
         this.stop(guildId);
@@ -170,6 +157,9 @@ export class TTSService {
         }
     }
 
+    /**
+     * Processes next item in queue for a guild.
+     */
     private processQueue(guildId: string): void {
         const state = this.states.get(guildId);
         if (!state) return;
@@ -194,7 +184,6 @@ export class TTSService {
             state.player.play(resource);
         } catch (error) {
             logger.error(error, `Error creating audio resource for URL: ${item.url}`);
-            // Move on to next in queue
             this.processQueue(guildId);
         }
     }

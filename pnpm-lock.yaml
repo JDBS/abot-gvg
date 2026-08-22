@@ -35,6 +35,9 @@ importers:
       tweetnacl:
         specifier: ^1.0.3
         version: 1.0.3
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
       zod:
         specifier: ^4.4.3
         version: 4.4.3
@@ -513,6 +516,11 @@ packages:
 
   typedarray@0.0.6:
     resolution: {integrity: sha512-/aCDEGatGvZ2BIk+HmLf4ifCJFwvKFNb9/JeZPMulfgFracn9QFcAf5GO8B/mweUjSoblS5In0cWhqpfs/5PQA==}
+
+  typescript@6.0.3:
+    resolution: {integrity: sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw==}
+    engines: {node: '>=14.17'}
+    hasBin: true
 
   undici-types@8.3.0:
     resolution: {integrity: sha512-j375ScV60dom+YkPFIfTLcOiPxkN/buHz5GobjLhixFuANaNs3C9l4GmrWqejgXWJ7BbJcFYpTEUkS1Ge8bpZQ==}
@@ -1000,6 +1008,8 @@ snapshots:
   tweetnacl@1.0.3: {}
 
   typedarray@0.0.6: {}
+
+  typescript@6.0.3: {}
 
   undici-types@8.3.0: {}
 
