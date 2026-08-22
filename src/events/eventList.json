@@ -1,0 +1,51 @@
+[
+    {
+        "tts": "Inicio de GvG",
+        "event": {
+            "type": "time",
+            "t": "30m"
+        }
+    },
+    {
+        "tts": "Fin de GvG",
+        "event": {
+            "type": "time",
+            "t": "0m"
+        }
+    },
+    {
+        "tts": "Junglas en 1 minuto",
+        "event": {
+            "type": "time",
+            "t": "26m"
+        }
+    },
+    {
+        "tts": "Junglas en 1 minuto",
+        "event": {
+            "type": "time",
+            "t": "21m"
+        }
+    },
+    {
+        "tts": "Junglas en 1 minuto",
+        "event": {
+            "type": "time",
+            "t": "16m"
+        }
+    },
+    {
+        "tts": "Junglas en 1 minuto",
+        "event": {
+            "type": "time",
+            "t": "11m"
+        }
+    },
+    {
+        "tts": "Junglas en 1 minuto",
+        "event": {
+            "type": "time",
+            "t": "6m"
+        }
+    }
+]

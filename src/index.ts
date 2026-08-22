@@ -1,15 +1,51 @@
-import { Client, Events, GatewayIntentBits, MessageFlags } from "discord.js";
+import {
+    Client,
+    Events,
+    GatewayIntentBits,
+    MessageFlags,
+    type VoiceBasedChannel,
+} from "discord.js";
 import { commands } from "./commands";
 import { env } from "./config";
+import { ttsService } from "./services/tts";
 import { logger } from "./utils/logger";
 
 const client = new Client({
-    intents: [GatewayIntentBits.Guilds],
+    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates],
 });
 
-client.once(Events.ClientReady, (readyClient) => {
+
+
+
+client.once(Events.ClientReady, async (readyClient) => {
     logger.info(`Logged in as ${readyClient.user.tag}`);
+
+    for (const [, guild] of readyClient.guilds.cache) {
+        try {
+            const channels = await guild.channels.fetch();
+            const voiceChannels = channels.filter(
+                (c): c is VoiceBasedChannel => c?.isVoiceBased() ?? false,
+            );
+
+            const generalVoice =
+                voiceChannels.find((c) => c.name.toLowerCase().includes("general")) ??
+                voiceChannels.first();
+
+            if (generalVoice) {
+                logger.info(
+                    `Auto-joining voice channel "${generalVoice.name}" in guild "${guild.name}" and speaking "Hello"`,
+                );
+                await ttsService.speak(generalVoice, "Hola!");
+                break;
+            }
+        } catch (error) {
+            logger.error(error, `Failed to auto-join general voice channel in guild ${guild.name}`);
+        }
+    }
 });
+
+
+
 
 client.on(Events.InteractionCreate, async (interaction) => {
     if (!interaction.isChatInputCommand()) return;
