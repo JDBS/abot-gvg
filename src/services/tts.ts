@@ -5,11 +5,14 @@ import {
     entersState,
     getVoiceConnection,
     joinVoiceChannel,
+    StreamType,
     type VoiceConnection,
     VoiceConnectionStatus,
 } from "@discordjs/voice";
+import { spawn } from "node:child_process";
 import type { VoiceBasedChannel } from "discord.js";
 import ffmpegPath from "ffmpeg-static";
+import { env } from "../config";
 import { logger } from "../utils/logger";
 import { type GuildTTSState, generateTTSQueueItems, type TTSOptions } from "./ttsUtils";
 
@@ -112,7 +115,8 @@ export class TTSService {
             throw new Error("Voice state not initialized.");
         }
 
-        const items = generateTTSQueueItems(text, options);
+        const speed = options.speed ?? env.TTS_SPEED;
+        const items = generateTTSQueueItems(text, { ...options, speed });
         state.queue.push(...items);
 
         if (!state.isPlaying) {
@@ -180,7 +184,28 @@ export class TTSService {
         if (!item) return;
 
         try {
-            const resource = createAudioResource(item.url);
+            let resource;
+            const speed = item.speed ?? 1.0;
+            if (speed !== 1.0) {
+                const ffmpegProcess = spawn(ffmpegPath || "ffmpeg", [
+                    "-i", item.url,
+                    "-af", `atempo=${speed}`,
+                    "-f", "s16le",
+                    "-ar", "48000",
+                    "-ac", "2",
+                    "pipe:1"
+                ]);
+
+                ffmpegProcess.on("error", (err) => {
+                    logger.error(err, `FFmpeg process error for URL: ${item.url}`);
+                });
+
+                resource = createAudioResource(ffmpegProcess.stdout, {
+                    inputType: StreamType.Raw
+                });
+            } else {
+                resource = createAudioResource(item.url);
+            }
             state.player.play(resource);
         } catch (error) {
             logger.error(error, `Error creating audio resource for URL: ${item.url}`);

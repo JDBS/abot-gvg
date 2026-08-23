@@ -10,6 +10,7 @@ const envSchema = z.object({
         .transform((val) => val.trim().toLowerCase()), // Remove whitespace and convert to lowercase
     PORT: z.coerce.number().default(3000),
     CLIENT_EVENT_TOKEN: z.string().min(1).default("averno_secret_client_token"),
+    TTS_SPEED: z.coerce.number().default(1.0),
 });
 
 export const env = envSchema.parse(process.env);

@@ -9,6 +9,8 @@ export interface TTSOptions {
     lang?: string;
     /** Whether to play speech at a slower rate */
     slow?: boolean;
+    /** Playback speed (multiplier, e.g. 1.3) */
+    speed?: number;
 }
 
 /**
@@ -19,6 +21,8 @@ export interface QueueItem {
     url: string;
     /** The text snippet corresponding to this audio URL */
     text: string;
+    /** Playback speed (multiplier, e.g. 1.3) */
+    speed?: number;
 }
 
 /**
@@ -65,5 +69,6 @@ export const generateTTSQueueItems = (text: string, options: TTSOptions = {}): Q
     return audioResults.map((item) => ({
         url: item.url,
         text: item.shortText || text,
+        speed: options.speed,
     }));
 };
