@@ -1,4 +1,4 @@
-import { SlashCommandSubcommandBuilder, type VoiceBasedChannel } from "discord.js";
+import { GuildMember, SlashCommandSubcommandBuilder, type VoiceBasedChannel } from "discord.js";
 import { eventHandler } from "../../../events";
 import type { GvgSubcommand } from "../types";
 
@@ -16,15 +16,25 @@ export const startTimer: GvgSubcommand = {
     async execute(interaction) {
         const offset = interaction.options.getInteger("offset") ?? 0;
 
-        if (!interaction.channel?.isVoiceBased()) {
+        const member = interaction.member as GuildMember | null;
+        const voiceChannel = member?.voice?.channel;
+
+        let targetChannel: VoiceBasedChannel | null = null;
+        if (interaction.channel?.isVoiceBased()) {
+            targetChannel = interaction.channel;
+        } else if (voiceChannel) {
+            targetChannel = voiceChannel;
+        }
+
+        if (!targetChannel) {
             await interaction.reply({
-                content: "You must run this command in a voice channel chat.",
+                content: "You must run this command in a voice channel chat, or be connected to a voice channel.",
                 ephemeral: true,
             });
             return;
         }
 
-        await eventHandler.start(interaction.channel as VoiceBasedChannel, offset);
+        await eventHandler.start(targetChannel, offset);
 
         await interaction.reply(`Starting timer with an offset of ${offset} seconds.`);
     },

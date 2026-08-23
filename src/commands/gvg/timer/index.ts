@@ -1,4 +1,4 @@
-import { ChannelType, MessageFlags, SlashCommandSubcommandGroupBuilder } from "discord.js";
+import { MessageFlags, SlashCommandSubcommandGroupBuilder } from "discord.js";
 import type { GvgSubcommandGroup } from "../types";
 import { timerSubcommands } from "./registry";
 
@@ -14,13 +14,6 @@ export const timerGroup: GvgSubcommandGroup = {
     data: builder,
 
     async execute(interaction) {
-        if (interaction.channel?.type !== ChannelType.GuildVoice) {
-            await interaction.reply({
-                content: "Timer commands can only be used in a voice channel chat.",
-                flags: [MessageFlags.Ephemeral],
-            });
-            return;
-        }
 
         const subcommandName = interaction.options.getSubcommand();
         const subcommand = timerSubcommands.get(subcommandName);
