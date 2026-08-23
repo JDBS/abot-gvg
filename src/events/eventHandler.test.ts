@@ -6,7 +6,7 @@ console.log("Running EventHandler & eventUtils tests...");
 
 // Test 1: loads, validates with Zod, and orders events correctly
 const events = eventHandler.loadEvents();
-assert.equal(events.length, 7, "Should load 7 events");
+assert.equal(events.length, 9, "Should load 9 events");
 
 assert.deepEqual(events[0], {
     tts: "Inicio de GvG",
@@ -14,7 +14,7 @@ assert.deepEqual(events[0], {
     rawTime: "30m",
 });
 
-assert.deepEqual(events[6], {
+assert.deepEqual(events[8], {
     tts: "Fin de GvG",
     remainingSeconds: 0,
     rawTime: "0m",

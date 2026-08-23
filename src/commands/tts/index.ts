@@ -87,7 +87,7 @@ export const ttsCommand = {
                 await interaction.deferReply();
 
                 try {
-                    await ttsService.speak(voiceChannel, message, { lang, slow });
+                    await ttsService.speak(voiceChannel, message, { lang, slow  });
                     await interaction.editReply({
                         content: `🗣️ Playing message: **"${message}"** (${lang.toUpperCase()})`,
                     });

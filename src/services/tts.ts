@@ -26,7 +26,7 @@ export class TTSService {
     private static instance: TTSService;
     private states = new Map<string, GuildTTSState>();
 
-    private constructor() {}
+    private constructor() { }
 
     /**
      * Gets the singleton instance of TTSService.

@@ -24,7 +24,7 @@
     "tts": "Jefe",
     "event": {
       "type": "time",
-      "t": "15"
+      "t": "15m"
     }
   },
   {

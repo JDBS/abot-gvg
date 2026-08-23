@@ -17,10 +17,11 @@
         "@biomejs/biome": "^2.5.2",
         "@types/bun": "latest",
         "@types/ffmpeg-static": "^5.1.0",
-        "@types/node": "^26.1.0"
+        "@types/node": "^26.1.0",
+        "typescript": "^7.0.2"
     },
     "peerDependencies": {
-        "typescript": "^6.0.3"
+        "typescript": "^7.0.2"
     },
     "dependencies": {
         "@discordjs/voice": "^0.19.2",
