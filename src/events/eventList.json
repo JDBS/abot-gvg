@@ -1,5 +1,13 @@
 [
     {
+        "tts": "La GvG empezará en 1 minuto",
+        "event": {
+            "type": "time",
+            "scope": "global",
+            "t": "31m"
+        }
+    },
+    {
         "tts": "Inicio de GvG",
         "event": {
             "type": "time",

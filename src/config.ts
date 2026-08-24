@@ -21,10 +21,7 @@ const envSchema = z.object({
         .string()
         .min(1)
         .default(process.env.GUILD_ID || "dummy-guild-id-ataque"),
-    GUILD_ID_DEFENSA: z
-        .string()
-        .min(1)
-        .default("dummy-guild-id-defensa"),
+    GUILD_ID_DEFENSA: z.string().min(1).default("dummy-guild-id-defensa"),
     NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
     DEFAULT_LANGUAGE: z
         .string()

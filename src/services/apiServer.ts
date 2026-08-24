@@ -64,8 +64,7 @@ export async function handleClientEvent(
             const targetClients = getTargetClients(clients, scope);
 
             if (targetClients.length > 0) {
-                let spokenCount = 0;
-                for (const client of targetClients) {
+                const speakPromises = targetClients.map(async (client) => {
                     const preferredChannel =
                         typeof clients === "object" &&
                         "ataque" in clients &&
@@ -111,15 +110,18 @@ export async function handleClientEvent(
                                         `Speaking TTS message "${ttsText}" in voice channel "${voiceChannel.name}" (Guild: "${guild.name}", Scope: ${scope})`,
                                     );
                                     await ttsService.speak(voiceChannel, ttsText);
-                                    spokenCount++;
-                                    break;
+                                    return true;
                                 }
                             } catch (error) {
                                 logger.error(error, `Failed to trigger TTS in guild ${guild.name}`);
                             }
                         }
                     }
-                }
+                    return false;
+                });
+
+                const results = await Promise.all(speakPromises);
+                const spokenCount = results.filter(Boolean).length;
 
                 if (spokenCount === 0) {
                     logger.warn("No available voice channel found for TTS execution.");

@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process";
 import {
     AudioPlayerStatus,
     createAudioPlayer,
@@ -9,7 +10,6 @@ import {
     type VoiceConnection,
     VoiceConnectionStatus,
 } from "@discordjs/voice";
-import { spawn } from "node:child_process";
 import type { VoiceBasedChannel } from "discord.js";
 import ffmpegPath from "ffmpeg-static";
 import { env } from "../config";
@@ -29,7 +29,7 @@ export class TTSService {
     private static instance: TTSService;
     private states = new Map<string, GuildTTSState>();
 
-    private constructor() { }
+    private constructor() {}
 
     /**
      * Gets the singleton instance of TTSService.
@@ -205,7 +205,7 @@ export class TTSService {
         if (!item) return;
 
         try {
-            let resource;
+            let resource: ReturnType<typeof createAudioResource>;
             const speed = item.speed ?? 1.0;
             if (speed !== 1.0) {
                 const ffmpegProcess = spawn(ffmpegPath || "ffmpeg", [

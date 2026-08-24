@@ -29,6 +29,21 @@ interface GuildTimerState {
  */
 export class EventHandler {
     private activeTimers = new Map<string, GuildTimerState>();
+    private guildOffsets = new Map<string, number>();
+
+    /**
+     * Sets configured offset for a guild.
+     */
+    public setGuildOffset(guildId: string, offsetSeconds: number): void {
+        this.guildOffsets.set(guildId, offsetSeconds);
+    }
+
+    /**
+     * Gets configured offset for a guild (defaults to 0).
+     */
+    public getGuildOffset(guildId: string): number {
+        return this.guildOffsets.get(guildId) ?? 0;
+    }
 
     /**
      * Loads and validates event list using Zod, converts time strings to seconds,
@@ -43,6 +58,7 @@ export class EventHandler {
 
     /**
      * Starts the GvG event sequence for a given voice channel or channel map.
+     * Connects bots to voice channels if not already connected.
      * Cancels any previously running timer for the same guild.
      *
      * @param channelOrMap - The Discord voice channel or ChannelMap to announce TTS messages in.
@@ -51,7 +67,7 @@ export class EventHandler {
      */
     public async start(
         channelOrMap: VoiceBasedChannel | ChannelMap,
-        offsetSeconds: number = 0,
+        offsetSeconds?: number,
     ): Promise<ProcessedTimeEvent[]> {
         const channels: ChannelMap =
             "guild" in channelOrMap
@@ -65,9 +81,33 @@ export class EventHandler {
         }
 
         const guildId = primaryChannel.guild.id;
+        const effectiveOffset = offsetSeconds ?? this.getGuildOffset(guildId);
+        this.setGuildOffset(guildId, effectiveOffset);
 
         // Stop any existing timer for this guild
         this.stop(guildId);
+
+        // Connect bots to voice channels immediately
+        if (channels.ataque) {
+            try {
+                await ttsService.joinChannel(channels.ataque);
+            } catch (error) {
+                logger.error(
+                    error,
+                    `Failed to connect Ataque bot to channel ${channels.ataque.name}`,
+                );
+            }
+        }
+        if (channels.defensa && channels.defensa !== channels.ataque) {
+            try {
+                await ttsService.joinChannel(channels.defensa);
+            } catch (error) {
+                logger.error(
+                    error,
+                    `Failed to connect Defensa bot to channel ${channels.defensa.name}`,
+                );
+            }
+        }
 
         const events = this.loadEvents();
         if (events.length === 0) {
@@ -75,14 +115,14 @@ export class EventHandler {
             return [];
         }
 
-        const scheduledEvents = prepareScheduledEvents(events, offsetSeconds);
+        const scheduledEvents = prepareScheduledEvents(events, effectiveOffset);
         const timeouts: ReturnType<typeof setTimeout>[] = [];
         const startTime = Date.now();
 
         const guildState: GuildTimerState = {
             channels,
             startTime,
-            offsetSeconds,
+            offsetSeconds: effectiveOffset,
             timeouts,
             events,
         };
@@ -90,7 +130,7 @@ export class EventHandler {
         this.activeTimers.set(guildId, guildState);
 
         logger.info(
-            `Starting GvG EventHandler in guild "${primaryChannel.guild.name}" with offset ${offsetSeconds}s`,
+            `Starting GvG EventHandler in guild "${primaryChannel.guild.name}" with offset ${effectiveOffset}s`,
         );
 
         for (const { event, delaySeconds } of scheduledEvents) {
@@ -112,9 +152,7 @@ export class EventHandler {
                         targetChannels.push(channels.defensa);
                     }
 
-                    for (const ch of targetChannels) {
-                        await ttsService.speak(ch, event.tts);
-                    }
+                    await Promise.all(targetChannels.map((ch) => ttsService.speak(ch, event.tts)));
                 } catch (error) {
                     logger.error(
                         error,
@@ -154,6 +192,13 @@ export class EventHandler {
      */
     public isRunning(guildId: string): boolean {
         return this.activeTimers.has(guildId);
+    }
+
+    /**
+     * Gets active channels for a guild if a timer is running.
+     */
+    public getActiveChannels(guildId: string): ChannelMap | undefined {
+        return this.activeTimers.get(guildId)?.channels;
     }
 }
 

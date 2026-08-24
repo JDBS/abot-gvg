@@ -1,10 +1,13 @@
 import { Collection } from "discord.js";
+import { offsetCommand } from "./offset";
 import { ping } from "./ping";
-import { timerGroup } from "./timer";
-import type { GvgSubcommand, GvgSubcommandGroup } from "./types";
+import { startCommand } from "./start";
+import { stopCommand } from "./stop";
+import type { GvgSubcommand } from "./types";
 
-export const subcommands = new Collection<string, GvgSubcommand>([[ping.data.name, ping]]);
-
-export const gvgGroups = new Collection<string, GvgSubcommandGroup>([
-    [timerGroup.data.name, timerGroup],
+export const subcommands = new Collection<string, GvgSubcommand>([
+    [startCommand.data.name, startCommand],
+    [offsetCommand.data.name, offsetCommand],
+    [stopCommand.data.name, stopCommand],
+    [ping.data.name, ping],
 ]);

@@ -10,12 +10,6 @@ const bots = [
         token: env.DISCORD_TOKEN_ATAQUE,
         guildId: env.GUILD_ID_ATAQUE || env.GUILD_ID,
     },
-    {
-        name: "Defensa",
-        clientId: env.CLIENT_ID_DEFENSA,
-        token: env.DISCORD_TOKEN_DEFENSA,
-        guildId: env.GUILD_ID_DEFENSA || env.GUILD_ID,
-    },
 ];
 
 const commandList = commands.map((command) => command.data.toJSON());

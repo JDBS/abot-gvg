@@ -35,12 +35,16 @@ export const handleClientReady = async (
             const targetVoiceChannel =
                 (targetChannelName
                     ? (voiceChannels.find(
-                        (c) => c.name.toLowerCase() === targetChannelName.toLowerCase() && c.client === client,
-                    ) ??
-                        voiceChannels.find((c) =>
-                            c.name.toLowerCase().includes(targetChannelName.toLowerCase()) && c.client === client,
-                        ))
-                    : undefined) ?? null
+                          (c) =>
+                              c.name.toLowerCase() === targetChannelName.toLowerCase() &&
+                              c.client === client,
+                      ) ??
+                      voiceChannels.find(
+                          (c) =>
+                              c.name.toLowerCase().includes(targetChannelName.toLowerCase()) &&
+                              c.client === client,
+                      ))
+                    : undefined) ?? null;
 
             if (targetVoiceChannel) {
                 logger.info(

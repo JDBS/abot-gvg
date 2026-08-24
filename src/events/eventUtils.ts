@@ -32,20 +32,20 @@ export const parseAndSortEvents = (data: unknown): ProcessedTimeEvent[] => {
 };
 
 /**
- * Calculates the execution delay in seconds for an event given match total duration and start offset.
+ * Calculates the execution delay in seconds for an event given match base duration (30m / 1800s) and start offset.
  *
- * @param eventRemainingSeconds - Remaining seconds of the match when event should fire (e.g., 1800s for 30m).
- * @param maxSeconds - Total match duration in seconds (starting point, e.g. 1800s).
- * @param offsetSeconds - Start offset (+ delays start, - starts ahead).
+ * @param eventRemainingSeconds - Remaining seconds of GvG when event should fire (e.g., 1800s for 30m).
+ * @param baseSeconds - Base GvG start duration in seconds (default: 1800s = 30m).
+ * @param offsetSeconds - Start offset (+ delays start/adds countdown time, - starts ahead).
  * @returns Delay in seconds from initial start time.
  */
 export const calculateEventDelay = (
     eventRemainingSeconds: number,
-    maxSeconds: number,
+    baseSeconds: number = 1800,
     offsetSeconds: number = 0,
 ): number => {
-    const targetElapsedSeconds = maxSeconds - eventRemainingSeconds;
-    return targetElapsedSeconds + offsetSeconds;
+    const effectiveStartSeconds = baseSeconds + offsetSeconds;
+    return effectiveStartSeconds - eventRemainingSeconds;
 };
 
 /**
@@ -53,22 +53,26 @@ export const calculateEventDelay = (
  *
  * @param events - List of processed events.
  * @param offsetSeconds - Start offset in seconds.
+ * @param baseSeconds - Base starting seconds (default 1800 = 30m).
  * @returns List of ScheduledTimeEvent objects with delaySeconds >= 0.
  */
 export const prepareScheduledEvents = (
     events: ProcessedTimeEvent[],
     offsetSeconds: number = 0,
+    baseSeconds: number = 1800,
 ): ScheduledTimeEvent[] => {
-    const firstEvent = events[0];
-    if (!firstEvent) {
+    if (events.length === 0) {
         return [];
     }
 
-    const maxSeconds = firstEvent.remainingSeconds;
     const scheduled: ScheduledTimeEvent[] = [];
 
     for (const event of events) {
-        const delaySeconds = calculateEventDelay(event.remainingSeconds, maxSeconds, offsetSeconds);
+        const delaySeconds = calculateEventDelay(
+            event.remainingSeconds,
+            baseSeconds,
+            offsetSeconds,
+        );
 
         if (delaySeconds >= 0) {
             scheduled.push({ event, delaySeconds });
