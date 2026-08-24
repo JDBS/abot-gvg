@@ -10,12 +10,14 @@ assert.equal(events.length, 9, "Should load 9 events");
 
 assert.deepEqual(events[0], {
     tts: "Inicio de GvG",
+    scope: "global",
     remainingSeconds: 1800,
     rawTime: "30m",
 });
 
 assert.deepEqual(events[8], {
     tts: "Fin de GvG",
+    scope: "global",
     remainingSeconds: 0,
     rawTime: "0m",
 });
@@ -39,9 +41,9 @@ assert.equal(
 
 // Test 3: prepareScheduledEvents filters out past events when negative offset bypasses them
 const sampleEvents = [
-    { tts: "Start", remainingSeconds: 1800, rawTime: "30m" },
-    { tts: "Middle", remainingSeconds: 900, rawTime: "15m" },
-    { tts: "End", remainingSeconds: 0, rawTime: "0m" },
+    { tts: "Start", scope: "global" as const, remainingSeconds: 1800, rawTime: "30m" },
+    { tts: "Middle", scope: "global" as const, remainingSeconds: 900, rawTime: "15m" },
+    { tts: "End", scope: "global" as const, remainingSeconds: 0, rawTime: "0m" },
 ];
 const scheduledWithOffset = prepareScheduledEvents(sampleEvents, -1000);
 // Start delay: (1800 - 1800) + (-1000) = -1000 (filtered out)

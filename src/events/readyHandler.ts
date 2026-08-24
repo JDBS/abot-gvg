@@ -8,8 +8,13 @@ import { logger } from "../utils/logger";
  *
  * @param client - The connected Discord client instance.
  */
-export const handleClientReady = async (client: Client<true>): Promise<void> => {
-    logger.info(`Logged in as ${client.user.tag}`);
+export const handleClientReady = async (
+    client: Client<true>,
+    botName?: string,
+    targetChannelName?: string,
+): Promise<void> => {
+    const label = botName ? ` [${botName}]` : "";
+    logger.info(`Logged in as ${client.user.tag}${label}`);
 
     for (const [, guild] of client.guilds.cache) {
         try {
@@ -18,19 +23,27 @@ export const handleClientReady = async (client: Client<true>): Promise<void> => 
                 (c): c is VoiceBasedChannel => c?.isVoiceBased() ?? false,
             );
 
-            const generalVoice =
+            const targetVoice =
+                (targetChannelName
+                    ? (voiceChannels.find(
+                          (c) => c.name.toLowerCase() === targetChannelName.toLowerCase(),
+                      ) ??
+                      voiceChannels.find((c) =>
+                          c.name.toLowerCase().includes(targetChannelName.toLowerCase()),
+                      ))
+                    : undefined) ??
                 voiceChannels.find((c) => c.name.toLowerCase().includes("general")) ??
                 voiceChannels.first();
 
-            if (generalVoice) {
+            if (targetVoice) {
                 logger.info(
-                    `Auto-joining voice channel "${generalVoice.name}" in guild "${guild.name}" and speaking "Hola!"`,
+                    `Auto-joining voice channel "${targetVoice.name}" in guild "${guild.name}" and speaking "Hola!"`,
                 );
-                await ttsService.speak(generalVoice, "Hola!");
+                await ttsService.speak(targetVoice, "Hola!");
                 break;
             }
         } catch (error) {
-            logger.error(error, `Failed to auto-join general voice channel in guild ${guild.name}`);
+            logger.error(error, `Failed to auto-join voice channel in guild ${guild.name}`);
         }
     }
 };

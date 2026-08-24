@@ -14,7 +14,6 @@ export const timerGroup: GvgSubcommandGroup = {
     data: builder,
 
     async execute(interaction) {
-
         const subcommandName = interaction.options.getSubcommand();
         const subcommand = timerSubcommands.get(subcommandName);
 

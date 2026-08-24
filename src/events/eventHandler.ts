@@ -8,11 +8,16 @@ import { parseAndSortEvents, prepareScheduledEvents } from "./eventUtils";
 export * from "./eventSchemas";
 export * from "./eventUtils";
 
+export type ChannelMap = {
+    ataque?: VoiceBasedChannel;
+    defensa?: VoiceBasedChannel;
+};
+
 /**
  * State of active timer per guild.
  */
 interface GuildTimerState {
-    channel: VoiceBasedChannel;
+    channels: ChannelMap;
     startTime: number;
     offsetSeconds: number;
     timeouts: ReturnType<typeof setTimeout>[];
@@ -37,18 +42,29 @@ export class EventHandler {
     }
 
     /**
-     * Starts the GvG event sequence for a given voice channel.
+     * Starts the GvG event sequence for a given voice channel or channel map.
      * Cancels any previously running timer for the same guild.
      *
-     * @param channel - The Discord voice channel to announce TTS messages in.
+     * @param channelOrMap - The Discord voice channel or ChannelMap to announce TTS messages in.
      * @param offsetSeconds - Optional start offset in seconds (+ delays start, - starts ahead).
      * @returns List of processed GvG events scheduled for execution.
      */
     public async start(
-        channel: VoiceBasedChannel,
+        channelOrMap: VoiceBasedChannel | ChannelMap,
         offsetSeconds: number = 0,
     ): Promise<ProcessedTimeEvent[]> {
-        const guildId = channel.guild.id;
+        const channels: ChannelMap =
+            "guild" in channelOrMap
+                ? { ataque: channelOrMap, defensa: channelOrMap }
+                : channelOrMap;
+
+        const primaryChannel = channels.ataque || channels.defensa;
+        if (!primaryChannel) {
+            logger.warn("No voice channel provided to EventHandler.start()");
+            return [];
+        }
+
+        const guildId = primaryChannel.guild.id;
 
         // Stop any existing timer for this guild
         this.stop(guildId);
@@ -64,7 +80,7 @@ export class EventHandler {
         const startTime = Date.now();
 
         const guildState: GuildTimerState = {
-            channel,
+            channels,
             startTime,
             offsetSeconds,
             timeouts,
@@ -74,16 +90,31 @@ export class EventHandler {
         this.activeTimers.set(guildId, guildState);
 
         logger.info(
-            `Starting GvG EventHandler in guild "${channel.guild.name}" (Channel: "${channel.name}") with offset ${offsetSeconds}s`,
+            `Starting GvG EventHandler in guild "${primaryChannel.guild.name}" with offset ${offsetSeconds}s`,
         );
 
         for (const { event, delaySeconds } of scheduledEvents) {
             const timeoutId = setTimeout(async () => {
                 try {
                     logger.info(
-                        `Triggering event "${event.tts}" (${event.rawTime}) in guild ${guildId}`,
+                        `Triggering event "${event.tts}" (${event.rawTime}, Scope: ${event.scope}) in guild ${guildId}`,
                     );
-                    await ttsService.speak(channel, event.tts);
+
+                    const targetChannels: VoiceBasedChannel[] = [];
+                    if (event.scope === "global") {
+                        if (channels.ataque) targetChannels.push(channels.ataque);
+                        if (channels.defensa && channels.defensa !== channels.ataque) {
+                            targetChannels.push(channels.defensa);
+                        }
+                    } else if (event.scope === "ataque" && channels.ataque) {
+                        targetChannels.push(channels.ataque);
+                    } else if (event.scope === "defensa" && channels.defensa) {
+                        targetChannels.push(channels.defensa);
+                    }
+
+                    for (const ch of targetChannels) {
+                        await ttsService.speak(ch, event.tts);
+                    }
                 } catch (error) {
                     logger.error(
                         error,

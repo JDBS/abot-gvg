@@ -20,6 +20,7 @@ export const parseAndSortEvents = (data: unknown): ProcessedTimeEvent[] => {
 
     const processed: ProcessedTimeEvent[] = validatedEvents.map((item) => ({
         tts: item.tts,
+        scope: item.event.scope ?? "global",
         remainingSeconds: stringToSeconds(item.event.t),
         rawTime: item.event.t,
     }));

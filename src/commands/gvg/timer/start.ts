@@ -28,7 +28,8 @@ export const startTimer: GvgSubcommand = {
 
         if (!targetChannel) {
             await interaction.reply({
-                content: "You must run this command in a voice channel chat, or be connected to a voice channel.",
+                content:
+                    "You must run this command in a voice channel chat, or be connected to a voice channel.",
                 ephemeral: true,
             });
             return;

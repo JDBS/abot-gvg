@@ -25,7 +25,7 @@ try {
         "Should return CORS header",
     );
 
-    // Test 3: POST /api/action valid client event payload with token
+    // Test 3: POST /api/action valid client event payload without scope (defaults to "global")
     const postPayload = {
         token: env.CLIENT_EVENT_TOKEN,
         event: "key_press",
@@ -36,11 +36,54 @@ try {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(postPayload),
     });
-    assert.equal(postRes.status, 200, "POST /api/action with valid payload and token should return 200 OK");
+    assert.equal(
+        postRes.status,
+        200,
+        "POST /api/action with valid payload and token should return 200 OK",
+    );
     const postBody = (await postRes.json()) as any;
     assert.equal(postBody.success, true, "POST response should be successful");
     assert.equal(postBody.data.event, "key_press", "Returned event name should match");
     assert.equal(postBody.data.value, "Acción Numpad 1", "Returned string value should match");
+    assert.equal(postBody.data.scope, "global", "Scope should default to global");
+
+    // Test 3b: POST /api/action with explicit scope ("ataque" and "defensa")
+    for (const scopeVal of ["ataque", "defensa"] as const) {
+        const scopeRes = await fetch(`${baseUrl}/api/action`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                token: env.CLIENT_EVENT_TOKEN,
+                event: "key_press",
+                value: "Test scope",
+                scope: scopeVal,
+            }),
+        });
+        assert.equal(
+            scopeRes.status,
+            200,
+            `POST /api/action with scope ${scopeVal} should return 200 OK`,
+        );
+        const scopeBody = (await scopeRes.json()) as any;
+        assert.equal(scopeBody.data.scope, scopeVal, `Scope in response should match ${scopeVal}`);
+    }
+
+    // Test 3c: POST /api/action with invalid scope (400 Bad Request)
+    const invalidScopeRes = await fetch(`${baseUrl}/api/action`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            token: env.CLIENT_EVENT_TOKEN,
+            event: "key_press",
+            value: "Test invalid scope",
+            scope: "invalid_scope",
+        }),
+    });
+    assert.equal(
+        invalidScopeRes.status,
+        400,
+        "POST /api/action with invalid scope should return 400",
+    );
 
     // Test 4: POST /api/action with invalid token (401 Unauthorized)
     const unauthorizedRes = await fetch(`${baseUrl}/api/action`, {
@@ -48,9 +91,17 @@ try {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: "wrong_token", event: "key_press", value: "test" }),
     });
-    assert.equal(unauthorizedRes.status, 401, "POST /api/action with wrong token should return 401 Unauthorized");
+    assert.equal(
+        unauthorizedRes.status,
+        401,
+        "POST /api/action with wrong token should return 401 Unauthorized",
+    );
     const unauthorizedBody = (await unauthorizedRes.json()) as any;
-    assert.equal(unauthorizedBody.success, false, "Unauthorized request should return success: false");
+    assert.equal(
+        unauthorizedBody.success,
+        false,
+        "Unauthorized request should return success: false",
+    );
 
     // Test 5: POST /api/action missing token/schema error (400 Bad Request)
     const invalidRes = await fetch(`${baseUrl}/api/action`, {

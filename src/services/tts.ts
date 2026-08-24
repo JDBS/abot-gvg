@@ -29,7 +29,7 @@ export class TTSService {
     private static instance: TTSService;
     private states = new Map<string, GuildTTSState>();
 
-    private constructor() { }
+    private constructor() {}
 
     /**
      * Gets the singleton instance of TTSService.
@@ -188,12 +188,17 @@ export class TTSService {
             const speed = item.speed ?? 1.0;
             if (speed !== 1.0) {
                 const ffmpegProcess = spawn(ffmpegPath || "ffmpeg", [
-                    "-i", item.url,
-                    "-af", `atempo=${speed}`,
-                    "-f", "s16le",
-                    "-ar", "48000",
-                    "-ac", "2",
-                    "pipe:1"
+                    "-i",
+                    item.url,
+                    "-af",
+                    `atempo=${speed}`,
+                    "-f",
+                    "s16le",
+                    "-ar",
+                    "48000",
+                    "-ac",
+                    "2",
+                    "pipe:1",
                 ]);
 
                 ffmpegProcess.on("error", (err) => {
@@ -201,7 +206,7 @@ export class TTSService {
                 });
 
                 resource = createAudioResource(ffmpegProcess.stdout, {
-                    inputType: StreamType.Raw
+                    inputType: StreamType.Raw,
                 });
             } else {
                 resource = createAudioResource(item.url);
