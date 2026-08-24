@@ -24,27 +24,19 @@
         }
     },
     {
-        "tts": "Atención: Jefe en 1 minuto",
+        "tts": "Atención: Jefe próximo",
         "event": {
             "type": "time",
             "scope": "global",
-            "t": "26m"
+            "t": "26m 15s"
         }
     },
     {
-        "tts": "Atención: Jefe en 1 minuto",
+        "tts": "Atención: Jefe próximo",
         "event": {
             "type": "time",
             "scope": "global",
-            "t": "16m"
-        }
-    },
-    {
-        "tts": "Junglas en 1 minuto",
-        "event": {
-            "type": "time",
-            "scope": "global",
-            "t": "26m"
+            "t": "16m 15s"
         }
     },
     {
@@ -52,7 +44,7 @@
         "event": {
             "type": "time",
             "scope": "global",
-            "t": "21m"
+            "t": "25m 20s"
         }
     },
     {
@@ -60,7 +52,7 @@
         "event": {
             "type": "time",
             "scope": "global",
-            "t": "16m"
+            "t": "20m 20s"
         }
     },
     {
@@ -68,7 +60,7 @@
         "event": {
             "type": "time",
             "scope": "global",
-            "t": "11m"
+            "t": "15m 20s"
         }
     },
     {
@@ -76,7 +68,15 @@
         "event": {
             "type": "time",
             "scope": "global",
-            "t": "6m"
+            "t": "10m 20s"
+        }
+    },
+    {
+        "tts": "Junglas en 1 minuto",
+        "event": {
+            "type": "time",
+            "scope": "global",
+            "t": "5m 20s"
         }
     }
 ]
