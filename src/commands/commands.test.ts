@@ -13,7 +13,10 @@ const gvg = commands.get("gvg");
 assert.ok(gvg, "gvgCommand should be defined");
 const gvgJson = gvg.data.toJSON();
 assert.equal(gvgJson.name, "gvg");
-assert.ok(gvgJson.options && gvgJson.options.length === 4, "Should register 4 subcommands for /gvg");
+assert.ok(
+    gvgJson.options && gvgJson.options.length === 4,
+    "Should register 4 subcommands for /gvg",
+);
 
 const subcommandNames = gvgJson.options?.map((opt: any) => opt.name);
 assert.deepEqual(subcommandNames?.sort(), ["offset", "ping", "start", "stop"].sort());

@@ -25,18 +25,65 @@ export function isDummyGuildId(guildId?: string): boolean {
     return dummyIds.has(guildId.trim());
 }
 
-/**
- * Deploys slash commands for configured Discord bots.
- */
-export async function deployCommands(): Promise<void> {
-    const bots = [
+function getBots() {
+    return [
         {
             name: "Ataque",
             clientId: env.CLIENT_ID_ATAQUE,
             token: env.DISCORD_TOKEN_ATAQUE,
             guildId: env.GUILD_ID_ATAQUE || env.GUILD_ID,
         },
+        {
+            name: "Defensa",
+            clientId: env.CLIENT_ID_DEFENSA,
+            token: env.DISCORD_TOKEN_DEFENSA,
+            guildId: env.GUILD_ID_DEFENSA || env.GUILD_ID,
+        },
     ];
+}
+
+/**
+ * Clears registered slash commands (both global and guild-scoped) for configured Discord bots.
+ */
+export async function clearCommands(): Promise<void> {
+    const bots = getBots();
+
+    for (const bot of bots) {
+        if (!bot.token || !bot.clientId) continue;
+        const rest = new REST({ version: "10" }).setToken(bot.token);
+
+        logger.info(`Clearing global commands for ${bot.name} bot...`);
+        try {
+            await rest.put(Routes.applicationCommands(bot.clientId), { body: [] });
+            logger.info(`Global commands cleared for ${bot.name} bot.`);
+        } catch (error) {
+            logger.error(error, `Failed to clear global commands for ${bot.name} bot.`);
+        }
+
+        if (!isDummyGuildId(bot.guildId) && bot.guildId) {
+            logger.info(`Clearing guild commands for ${bot.name} bot in guild ${bot.guildId}...`);
+            try {
+                await rest.put(Routes.applicationGuildCommands(bot.clientId, bot.guildId), {
+                    body: [],
+                });
+                logger.info(`Guild commands cleared for ${bot.name} bot.`);
+            } catch (error) {
+                logger.error(error, `Failed to clear guild commands for ${bot.name} bot.`);
+            }
+        }
+    }
+}
+
+/**
+ * Deploys slash commands for configured Discord bots.
+ * If clean flag is specified, clears existing commands before deploying.
+ */
+export async function deployCommands(options?: { clean?: boolean }): Promise<void> {
+    if (options?.clean) {
+        await clearCommands();
+    }
+
+    const bots = getBots();
 
     const commandList = commands.map((command) => command.data.toJSON());
 
@@ -68,11 +115,23 @@ export async function deployCommands(): Promise<void> {
                 });
                 logger.info(`Global commands deployed successfully for ${bot.name} bot.`);
             } catch (globalError) {
-                logger.error(globalError, `Failed to deploy commands to Discord for ${bot.name} bot.`);
+                logger.error(
+                    globalError,
+                    `Failed to deploy commands to Discord for ${bot.name} bot.`,
+                );
             }
         }
     }
 }
 
 // Execute deployment if run directly as main script
-await deployCommands();
+const scriptArg = process.argv[1]?.replace(/\\/g, "/");
+const isDirectRun =
+    scriptArg &&
+    (scriptArg.endsWith("/deploy-commands.ts") ||
+        scriptArg.endsWith("/deploy-commands.js") ||
+        scriptArg.endsWith("/deploy-commands"));
+if (isDirectRun) {
+    const shouldClean = process.argv.includes("--clean") || process.argv.includes("--clear");
+    await deployCommands({ clean: shouldClean });
+}

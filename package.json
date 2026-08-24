@@ -7,6 +7,7 @@
         "dev": "bun run deploy && bun src/index.ts",
         "dev:watch": "bun run deploy && bun --watch src/index.ts",
         "deploy": "bun run src/deploy-commands.ts",
+        "deploy:clean": "bun run src/deploy-commands.ts --clean",
         "build": "tsc",
         "test": "tsx --test src/**/*.test.ts",
         "lint": "biome lint .",

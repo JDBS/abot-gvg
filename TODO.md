@@ -1,0 +1,1 @@
+Añadir offset a gvg start command.

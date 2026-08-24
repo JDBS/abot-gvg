@@ -33,7 +33,12 @@ export const handleClientReady = async (
             const channels = await guild.channels.fetch();
             const voiceChannels = Array.from(channels.values()).filter(
                 (c): c is VoiceBasedChannel =>
-                    Boolean(c && typeof c.isVoiceBased === "function" && c.isVoiceBased() && c.client === client),
+                    Boolean(
+                        c &&
+                            typeof c.isVoiceBased === "function" &&
+                            c.isVoiceBased() &&
+                            c.client === client,
+                    ),
             );
 
             const targetVoiceChannel = targetChannelName

@@ -10,7 +10,7 @@ import {
 } from "discord.js";
 import { eventHandler } from "../../events";
 import { resolveGuildBotChannels } from "../../utils/channelResolver";
-import { secondsToString } from "../../utils/timeConversion";
+import { parseOffsetInput, secondsToString } from "../../utils/timeConversion";
 import type { GvgSubcommand } from "./types";
 
 /**
@@ -19,7 +19,13 @@ import type { GvgSubcommand } from "./types";
 export const startCommand: GvgSubcommand = {
     data: new SlashCommandSubcommandBuilder()
         .setName("start")
-        .setDescription("Inicia la GvG en t=30m (conectando los bots a sus canales)"),
+        .setDescription("Inicia la GvG en t=30m por defecto o con un offset opcional")
+        .addStringOption((option) =>
+            option
+                .setName("offset")
+                .setDescription("Tiempo u offset opcional (ej. 35m, 5m, +5m, -2m, 300s)")
+                .setRequired(false),
+        ),
 
     async execute(interaction) {
         if (!interaction.guildId) {
@@ -28,6 +34,24 @@ export const startCommand: GvgSubcommand = {
                 ephemeral: true,
             });
             return;
+        }
+
+        const offsetInput =
+            interaction.options.getString("offset") ?? interaction.options.getString("tiempo");
+
+        let offset = 0;
+        if (offsetInput) {
+            try {
+                offset = parseOffsetInput(offsetInput);
+            } catch (error) {
+                const errorMsg =
+                    error instanceof Error ? error.message : "Formato de tiempo inválido.";
+                await interaction.reply({
+                    content: `❌ Error al establecer el offset: ${errorMsg}`,
+                    ephemeral: true,
+                });
+                return;
+            }
         }
 
         const member = interaction.member as GuildMember | null;
@@ -46,8 +70,6 @@ export const startCommand: GvgSubcommand = {
             return;
         }
 
-        // Initialize offset to 0 (t = 30m) on /gvg start
-        const offset = 0;
         eventHandler.setGuildOffset(interaction.guildId, offset);
         await eventHandler.start(channels, offset);
 
@@ -55,7 +77,8 @@ export const startCommand: GvgSubcommand = {
         if (channels.ataque) channelNames.push(`Ataque: **${channels.ataque.name}**`);
         if (channels.defensa) channelNames.push(`Defensa: **${channels.defensa.name}**`);
 
-        const initialTimeString = secondsToString(1800);
+        const initialTimeSeconds = 1800 + offset;
+        const initialTimeString = secondsToString(Math.max(0, initialTimeSeconds));
 
         await interaction.reply(
             `🎮 **GvG Iniciada** (t = **${initialTimeString}**)\n📢 Canales conectados -> ${channelNames.join(" | ")}`,
