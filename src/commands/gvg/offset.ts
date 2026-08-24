@@ -1,8 +1,16 @@
+/**
+ * Subcommand: /gvg offset
+ * Configures time offset for GvG timer.
+ */
+
 import { SlashCommandSubcommandBuilder } from "discord.js";
 import { eventHandler } from "../../events";
 import { parseOffsetInput, secondsToString } from "../../utils/timeConversion";
 import type { GvgSubcommand } from "./types";
 
+/**
+ * Command definition and execution logic for /gvg offset.
+ */
 export const offsetCommand: GvgSubcommand = {
     data: new SlashCommandSubcommandBuilder()
         .setName("offset")

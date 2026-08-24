@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
-import { resolveGuildBotChannels } from "./channelResolver";
+import {
+    findMatchingVoiceChannel,
+    resolveGuildBotChannels,
+    resolveScopeChannels,
+} from "./channelResolver";
 
 console.log("Running channelResolver tests...");
 
@@ -63,5 +67,17 @@ assert.equal(resolved.ataque?.client?.user?.id, clientAtaqueId);
 assert.ok(resolved.defensa, "Should resolve Defensa channel");
 assert.equal(resolved.defensa?.name, "General");
 assert.equal(resolved.defensa?.client?.user?.id, clientDefensaId);
+
+// Test 2: findMatchingVoiceChannel pure function
+const channelsList = [ataqueChannel, defensaChannel];
+assert.equal(findMatchingVoiceChannel(channelsList, "invitados")?.id, "ch-invitados");
+assert.equal(findMatchingVoiceChannel(channelsList, "gen")?.id, "ch-general");
+assert.equal(findMatchingVoiceChannel(channelsList, "nonexistent"), undefined);
+
+// Test 3: resolveScopeChannels pure function
+const channelMap = { ataque: ataqueChannel, defensa: defensaChannel };
+assert.deepEqual(resolveScopeChannels(channelMap, "global"), [ataqueChannel, defensaChannel]);
+assert.deepEqual(resolveScopeChannels(channelMap, "ataque"), [ataqueChannel]);
+assert.deepEqual(resolveScopeChannels(channelMap, "defensa"), [defensaChannel]);
 
 console.log("All channelResolver tests passed successfully!");

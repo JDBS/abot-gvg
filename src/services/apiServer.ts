@@ -1,141 +1,21 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { createServer, type Server } from "node:http";
-import type { Client, VoiceBasedChannel } from "discord.js";
+import type { Client } from "discord.js";
 import { env } from "../config";
 import { clientEventSchema } from "../events/clientEventSchemas";
-import type { BotScope } from "../events/eventSchemas";
 import { logger } from "../utils/logger";
-import { ttsService } from "./tts";
+import { type BotClients, handleClientEvent } from "./clientEventHandler";
 
-export interface BotClients {
-    ataque?: Client;
-    defensa?: Client;
-}
+export type { BotClients };
 
+/**
+ * Instance structure returned by startApiServer.
+ */
 export interface ApiServerInstance {
+    /** Underlying Node.js HTTP Server */
     server: Server;
+    /** Gracefully stops the HTTP API server */
     stop: () => Promise<void>;
-}
-
-/**
- * Resolves target Discord clients matching the specified scope.
- */
-function getTargetClients(clients?: BotClients | Client, scope: BotScope = "global"): Client[] {
-    if (!clients) return [];
-
-    // Backwards compatibility if a single Client is passed
-    if ("guilds" in clients) {
-        return [clients];
-    }
-
-    const targetList: Client[] = [];
-    if ((scope === "global" || scope === "ataque") && clients.ataque) {
-        targetList.push(clients.ataque);
-    }
-    if ((scope === "global" || scope === "defensa") && clients.defensa) {
-        targetList.push(clients.defensa);
-    }
-
-    return targetList;
-}
-
-/**
- * Handles incoming client events received via POST request.
- *
- * @param eventName - The event identifier (e.g., "key_press").
- * @param value - The string message/value associated with the event.
- * @param clients - Optional Discord client(s) instance or BotClients map.
- * @param scope - The bot scope ("global", "ataque", "defensa"). Defaults to "global".
- */
-export async function handleClientEvent(
-    eventName: string,
-    value: string,
-    clients?: BotClients | Client,
-    scope: BotScope = "global",
-): Promise<{ processed: boolean; detail?: string }> {
-    logger.info(
-        `Processing client event: "${eventName}" with value: "${value}" and scope: "${scope}"`,
-    );
-
-    switch (eventName) {
-        case "key_press": {
-            logger.info(`Global hotkey event received: "${value}" (Scope: ${scope})`);
-            const ttsText = String(value);
-            const targetClients = getTargetClients(clients, scope);
-
-            if (targetClients.length > 0) {
-                const speakPromises = targetClients.map(async (client) => {
-                    const preferredChannel =
-                        typeof clients === "object" &&
-                        "ataque" in clients &&
-                        client === clients.ataque
-                            ? env.ATAQUE_CANAL
-                            : typeof clients === "object" &&
-                                "defensa" in clients &&
-                                client === clients.defensa
-                              ? env.DEFENSA_CANAL
-                              : undefined;
-
-                    if (client.guilds.cache.size > 0) {
-                        for (const [, guild] of client.guilds.cache) {
-                            try {
-                                const channels = await guild.channels.fetch();
-                                const voiceChannels = channels.filter(
-                                    (c): c is VoiceBasedChannel => c?.isVoiceBased() ?? false,
-                                );
-
-                                const voiceChannel =
-                                    voiceChannels.find((c) =>
-                                        c.members.has(client.user?.id || ""),
-                                    ) ??
-                                    (preferredChannel
-                                        ? (voiceChannels.find(
-                                              (c) =>
-                                                  c.name.toLowerCase() ===
-                                                  preferredChannel.toLowerCase(),
-                                          ) ??
-                                          voiceChannels.find((c) =>
-                                              c.name
-                                                  .toLowerCase()
-                                                  .includes(preferredChannel.toLowerCase()),
-                                          ))
-                                        : undefined) ??
-                                    voiceChannels.find((c) =>
-                                        c.name.toLowerCase().includes("general"),
-                                    ) ??
-                                    voiceChannels.first();
-
-                                if (voiceChannel) {
-                                    logger.info(
-                                        `Speaking TTS message "${ttsText}" in voice channel "${voiceChannel.name}" (Guild: "${guild.name}", Scope: ${scope})`,
-                                    );
-                                    await ttsService.speak(voiceChannel, ttsText);
-                                    return true;
-                                }
-                            } catch (error) {
-                                logger.error(error, `Failed to trigger TTS in guild ${guild.name}`);
-                            }
-                        }
-                    }
-                    return false;
-                });
-
-                const results = await Promise.all(speakPromises);
-                const spokenCount = results.filter(Boolean).length;
-
-                if (spokenCount === 0) {
-                    logger.warn("No available voice channel found for TTS execution.");
-                }
-            } else {
-                logger.warn("Discord client not connected or no active guilds available for TTS.");
-            }
-
-            return { processed: true, detail: `Event "${ttsText}" read via TTS` };
-        }
-        default:
-            logger.info(`Received generic client event "${eventName}" with value "${value}"`);
-            return { processed: true, detail: `Event ${eventName} logged` };
-    }
 }
 
 /**
@@ -195,7 +75,7 @@ export function startApiServer(
                         const eventData = clientEventSchema.parse(parsedBody);
 
                         if (eventData.token !== env.CLIENT_EVENT_TOKEN) {
-                            logger.warn(`Unauthorized event token received: "${eventData.token}"`);
+                            logger.warn("Unauthorized event token received");
                             res.writeHead(401, { "Content-Type": "application/json" });
                             res.end(
                                 JSON.stringify({

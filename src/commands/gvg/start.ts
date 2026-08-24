@@ -1,3 +1,8 @@
+/**
+ * Subcommand: /gvg start
+ * Starts the GvG countdown timer sequence from t=30m.
+ */
+
 import {
     type GuildMember,
     SlashCommandSubcommandBuilder,
@@ -8,6 +13,9 @@ import { resolveGuildBotChannels } from "../../utils/channelResolver";
 import { secondsToString } from "../../utils/timeConversion";
 import type { GvgSubcommand } from "./types";
 
+/**
+ * Command definition and execution logic for /gvg start.
+ */
 export const startCommand: GvgSubcommand = {
     data: new SlashCommandSubcommandBuilder()
         .setName("start")

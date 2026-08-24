@@ -1,12 +1,15 @@
 import type { Client, VoiceBasedChannel } from "discord.js";
 import { ttsService } from "../services/tts";
+import { findMatchingVoiceChannel } from "../utils/channelResolver";
 import { logger } from "../utils/logger";
 
 /**
- * Handles the client ready event: logs bot connection and auto-joins the first available
- * general voice channel in cached guilds to greet users.
+ * Handles the client ready event: logs bot connection and auto-joins configured voice channel
+ * in cached guilds to greet users.
  *
  * @param client - The connected Discord client instance.
+ * @param botName - Optional label for the bot ("Ataque" or "Defensa").
+ * @param targetChannelName - Optional target channel name to search and auto-connect.
  */
 export const handleClientReady = async (
     client: Client<true>,
@@ -28,23 +31,14 @@ export const handleClientReady = async (
     for (const [, guild] of client.guilds.cache) {
         try {
             const channels = await guild.channels.fetch();
-            const voiceChannels = channels.filter(
-                (c): c is VoiceBasedChannel => c?.isVoiceBased() ?? false,
+            const voiceChannels = Array.from(channels.values()).filter(
+                (c): c is VoiceBasedChannel =>
+                    Boolean(c && typeof c.isVoiceBased === "function" && c.isVoiceBased() && c.client === client),
             );
 
-            const targetVoiceChannel =
-                (targetChannelName
-                    ? (voiceChannels.find(
-                          (c) =>
-                              c.name.toLowerCase() === targetChannelName.toLowerCase() &&
-                              c.client === client,
-                      ) ??
-                      voiceChannels.find(
-                          (c) =>
-                              c.name.toLowerCase().includes(targetChannelName.toLowerCase()) &&
-                              c.client === client,
-                      ))
-                    : undefined) ?? null;
+            const targetVoiceChannel = targetChannelName
+                ? findMatchingVoiceChannel(voiceChannels, targetChannelName)
+                : null;
 
             if (targetVoiceChannel) {
                 logger.info(

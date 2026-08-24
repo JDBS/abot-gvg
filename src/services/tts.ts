@@ -33,6 +33,8 @@ export class TTSService {
 
     /**
      * Gets the singleton instance of TTSService.
+     *
+     * @returns Singleton instance of TTSService.
      */
     public static getInstance(): TTSService {
         if (!TTSService.instance) {
@@ -41,6 +43,9 @@ export class TTSService {
         return TTSService.instance;
     }
 
+    /**
+     * Generates a state map lookup key for a channel.
+     */
     private getKey(channel: VoiceBasedChannel): string {
         const clientId = channel.client?.user?.id || "default";
         return `${channel.guild.id}:${clientId}`;
@@ -54,7 +59,7 @@ export class TTSService {
      * @throws {Error} If connection fails to establish within timeout.
      */
     public async joinChannel(channel: VoiceBasedChannel): Promise<VoiceConnection> {
-        const key = this.getKey(channel); // channelId: clientId
+        const key = this.getKey(channel);
         const guildId = channel.guild.id;
         let state = this.states.get(key);
 
@@ -67,14 +72,14 @@ export class TTSService {
         const connection = joinVoiceChannel({
             channelId: channel.id,
             guildId: guildId,
-            group: channel.client?.user?.id, // this is required to identify each bot
+            group: channel.client?.user?.id,
             adapterCreator: channel.guild.voiceAdapterCreator,
         });
 
         try {
             await entersState(connection, VoiceConnectionStatus.Ready, 20_000);
         } catch (error) {
-            logger.error(error, `Failed to join voice channel ${channel.id} in guild ${guildId}`);
+            logger.error(error, `Failed to join voice channel "${channel.name}"`);
             connection.destroy();
             this.states.delete(key);
             throw new Error("Failed to connect to voice channel within timeout.");
@@ -107,7 +112,7 @@ export class TTSService {
      * @param channel - The Discord voice channel to speak in.
      * @param text - Text message to convert to speech.
      * @param options - Optional language and speech speed configuration.
-     * @returns Number of audio chunks queued for playback.
+     * @returns Promise resolving to number of audio chunks queued for playback.
      */
     public async speak(
         channel: VoiceBasedChannel,
@@ -183,7 +188,7 @@ export class TTSService {
     }
 
     /**
-     * Processes next item in queue for a guild or key.
+     * Processes next item in queue for a key.
      */
     private processQueue(key: string): void {
         const state = this.states.get(key);
@@ -223,7 +228,7 @@ export class TTSService {
                 ]);
 
                 ffmpegProcess.on("error", (err) => {
-                    logger.error(err, `FFmpeg process error for URL: ${item.url}`);
+                    logger.error(err, "FFmpeg process error for TTS audio stream");
                 });
 
                 resource = createAudioResource(ffmpegProcess.stdout, {
@@ -234,7 +239,7 @@ export class TTSService {
             }
             state.player.play(resource);
         } catch (error) {
-            logger.error(error, `Error creating audio resource for URL: ${item.url}`);
+            logger.error(error, "Error creating audio resource for TTS playback");
             this.processQueue(key);
         }
     }
@@ -245,7 +250,7 @@ export class TTSService {
         });
 
         state.player.on("error", (error) => {
-            logger.error(error, `Audio player error for key ${key}`);
+            logger.error(error, "Audio player error during TTS playback");
             this.processQueue(key);
         });
     }
@@ -258,7 +263,7 @@ export class TTSService {
                     entersState(connection, VoiceConnectionStatus.Connecting, 5_000),
                 ]);
             } catch {
-                logger.info(`Voice connection disconnected for key ${key}`);
+                logger.info("Voice connection disconnected");
                 this.leave(key);
             }
         });
@@ -277,9 +282,7 @@ export class TTSService {
         // Auto disconnect after 5 minutes of inactivity
         state.idleTimeout = setTimeout(
             () => {
-                logger.info(
-                    `Auto disconnecting TTS voice channel for key ${key} due to inactivity`,
-                );
+                logger.info("Auto disconnecting TTS voice channel due to inactivity");
                 this.leave(key);
             },
             5 * 60 * 1000,

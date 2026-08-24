@@ -1,3 +1,9 @@
+/**
+ * Application entry point for GvG Helper / AvernoBot server.
+ * Initializes Discord clients for Ataque and Defensa bots, registers event listeners,
+ * starts the HTTP API server, and logs into Discord.
+ */
+
 import { Client, Events, GatewayIntentBits } from "discord.js";
 import { env } from "./config";
 import { handleInteractionCreate } from "./events/interactionHandler";
@@ -18,6 +24,9 @@ clientAtaque.on(Events.InteractionCreate, handleInteractionCreate);
 
 clientDefensa.once(Events.ClientReady, (c) => handleClientReady(c, "Defensa", env.DEFENSA_CANAL));
 
+/**
+ * Exported active Discord client instances.
+ */
 export const clients = { ataque: clientAtaque, defensa: clientDefensa };
 
 // Start HTTP API server for receiving client events
@@ -26,7 +35,7 @@ startApiServer(env.PORT, clients);
 // Conectar bots de forma independiente y resiliente
 logger.info("Iniciando conexión a Discord...");
 
-const loginAtaque = async () => {
+const loginAtaque = async (): Promise<void> => {
     try {
         await clientAtaque.login(env.DISCORD_TOKEN_ATAQUE);
     } catch (error) {
@@ -34,7 +43,7 @@ const loginAtaque = async () => {
     }
 };
 
-const loginDefensa = async () => {
+const loginDefensa = async (): Promise<void> => {
     try {
         await clientDefensa.login(env.DISCORD_TOKEN_DEFENSA);
     } catch (error) {

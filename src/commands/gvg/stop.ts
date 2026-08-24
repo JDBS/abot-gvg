@@ -1,8 +1,16 @@
+/**
+ * Subcommand: /gvg stop
+ * Stops the active GvG timer and disconnects voice bots.
+ */
+
 import { SlashCommandSubcommandBuilder } from "discord.js";
 import { eventHandler } from "../../events";
 import { ttsService } from "../../services/tts";
 import type { GvgSubcommand } from "./types";
 
+/**
+ * Command definition and execution logic for /gvg stop.
+ */
 export const stopCommand: GvgSubcommand = {
     data: new SlashCommandSubcommandBuilder()
         .setName("stop")

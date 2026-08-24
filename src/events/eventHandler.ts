@@ -1,5 +1,6 @@
 import type { VoiceBasedChannel } from "discord.js";
 import { ttsService } from "../services/tts";
+import { resolveScopeChannels } from "../utils/channelResolver";
 import { logger } from "../utils/logger";
 import eventListJson from "./eventList.json";
 import type { ProcessedTimeEvent } from "./eventSchemas";
@@ -8,13 +9,16 @@ import { parseAndSortEvents, prepareScheduledEvents } from "./eventUtils";
 export * from "./eventSchemas";
 export * from "./eventUtils";
 
+/**
+ * Mapping of bot roles (ataque and defensa) to their voice channels.
+ */
 export type ChannelMap = {
     ataque?: VoiceBasedChannel;
     defensa?: VoiceBasedChannel;
 };
 
 /**
- * State of active timer per guild.
+ * Internal state of active timer per guild.
  */
 interface GuildTimerState {
     channels: ChannelMap;
@@ -33,6 +37,9 @@ export class EventHandler {
 
     /**
      * Sets configured offset for a guild.
+     *
+     * @param guildId - The Discord guild ID.
+     * @param offsetSeconds - The offset in seconds.
      */
     public setGuildOffset(guildId: string, offsetSeconds: number): void {
         this.guildOffsets.set(guildId, offsetSeconds);
@@ -40,6 +47,9 @@ export class EventHandler {
 
     /**
      * Gets configured offset for a guild (defaults to 0).
+     *
+     * @param guildId - The Discord guild ID.
+     * @returns The configured offset in seconds.
      */
     public getGuildOffset(guildId: string): number {
         return this.guildOffsets.get(guildId) ?? 0;
@@ -130,34 +140,20 @@ export class EventHandler {
         this.activeTimers.set(guildId, guildState);
 
         logger.info(
-            `Starting GvG EventHandler in guild "${primaryChannel.guild.name}" with offset ${effectiveOffset}s`,
+            `Starting GvG EventHandler in server "${primaryChannel.guild.name}" with offset ${effectiveOffset}s`,
         );
 
         for (const { event, delaySeconds } of scheduledEvents) {
             const timeoutId = setTimeout(async () => {
                 try {
                     logger.info(
-                        `Triggering event "${event.tts}" (${event.rawTime}, Scope: ${event.scope}) in guild ${guildId}`,
+                        `Triggering event "${event.tts}" (${event.rawTime}, Scope: ${event.scope})`,
                     );
 
-                    const targetChannels: VoiceBasedChannel[] = [];
-                    if (event.scope === "global") {
-                        if (channels.ataque) targetChannels.push(channels.ataque);
-                        if (channels.defensa && channels.defensa !== channels.ataque) {
-                            targetChannels.push(channels.defensa);
-                        }
-                    } else if (event.scope === "ataque" && channels.ataque) {
-                        targetChannels.push(channels.ataque);
-                    } else if (event.scope === "defensa" && channels.defensa) {
-                        targetChannels.push(channels.defensa);
-                    }
-
+                    const targetChannels = resolveScopeChannels(channels, event.scope);
                     await Promise.all(targetChannels.map((ch) => ttsService.speak(ch, event.tts)));
                 } catch (error) {
-                    logger.error(
-                        error,
-                        `Error executing TTS for event "${event.tts}" in guild ${guildId}`,
-                    );
+                    logger.error(error, `Error executing TTS for event "${event.tts}"`);
                 }
             }, delaySeconds * 1000);
 
@@ -181,7 +177,7 @@ export class EventHandler {
         }
 
         this.activeTimers.delete(guildId);
-        logger.info(`Stopped GvG EventHandler for guild ${guildId}`);
+        logger.info("Stopped GvG EventHandler");
     }
 
     /**
@@ -196,6 +192,9 @@ export class EventHandler {
 
     /**
      * Gets active channels for a guild if a timer is running.
+     *
+     * @param guildId - The Discord guild ID.
+     * @returns ChannelMap if timer active, otherwise undefined.
      */
     public getActiveChannels(guildId: string): ChannelMap | undefined {
         return this.activeTimers.get(guildId)?.channels;
