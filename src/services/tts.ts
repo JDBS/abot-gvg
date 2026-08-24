@@ -29,7 +29,7 @@ export class TTSService {
     private static instance: TTSService;
     private states = new Map<string, GuildTTSState>();
 
-    private constructor() {}
+    private constructor() { }
 
     /**
      * Gets the singleton instance of TTSService.
@@ -41,6 +41,11 @@ export class TTSService {
         return TTSService.instance;
     }
 
+    private getKey(channel: VoiceBasedChannel): string {
+        const clientId = channel.client?.user?.id || "default";
+        return `${channel.guild.id}:${clientId}`;
+    }
+
     /**
      * Joins or gets an existing voice connection for a given voice channel.
      *
@@ -49,8 +54,9 @@ export class TTSService {
      * @throws {Error} If connection fails to establish within timeout.
      */
     public async joinChannel(channel: VoiceBasedChannel): Promise<VoiceConnection> {
+        const key = this.getKey(channel); // channelId: clientId
         const guildId = channel.guild.id;
-        let state = this.states.get(guildId);
+        let state = this.states.get(key);
 
         if (state?.connection) {
             if (state.connection.joinConfig.channelId === channel.id) {
@@ -61,6 +67,7 @@ export class TTSService {
         const connection = joinVoiceChannel({
             channelId: channel.id,
             guildId: guildId,
+            group: channel.client?.user?.id, // this is required to identify each bot
             adapterCreator: channel.guild.voiceAdapterCreator,
         });
 
@@ -69,7 +76,7 @@ export class TTSService {
         } catch (error) {
             logger.error(error, `Failed to join voice channel ${channel.id} in guild ${guildId}`);
             connection.destroy();
-            this.states.delete(guildId);
+            this.states.delete(key);
             throw new Error("Failed to connect to voice channel within timeout.");
         }
 
@@ -83,9 +90,9 @@ export class TTSService {
             };
 
             connection.subscribe(player);
-            this.setupPlayerListeners(guildId, state);
-            this.setupConnectionListeners(guildId, connection);
-            this.states.set(guildId, state);
+            this.setupPlayerListeners(key, state);
+            this.setupConnectionListeners(key, connection);
+            this.states.set(key, state);
         } else {
             state.connection = connection;
             connection.subscribe(state.player);
@@ -107,10 +114,10 @@ export class TTSService {
         text: string,
         options: TTSOptions = {},
     ): Promise<number> {
-        const guildId = channel.guild.id;
+        const key = this.getKey(channel);
         await this.joinChannel(channel);
 
-        const state = this.states.get(guildId);
+        const state = this.states.get(key);
         if (!state) {
             throw new Error("Voice state not initialized.");
         }
@@ -120,41 +127,55 @@ export class TTSService {
         state.queue.push(...items);
 
         if (!state.isPlaying) {
-            this.processQueue(guildId);
+            this.processQueue(key);
         }
 
         return items.length;
     }
 
     /**
-     * Stops current audio playback and clears the queue for a guild.
+     * Stops current audio playback and clears the queue for a guild or specific key.
      *
-     * @param guildId - The Discord guild ID.
+     * @param guildIdOrKey - The Discord guild ID or unique state key.
      */
-    public stop(guildId: string): void {
-        const state = this.states.get(guildId);
-        if (!state) return;
+    public stop(guildIdOrKey: string): void {
+        const matchingKeys = Array.from(this.states.keys()).filter(
+            (k) => k === guildIdOrKey || k.startsWith(`${guildIdOrKey}:`),
+        );
 
-        state.queue = [];
-        state.isPlaying = false;
-        state.player.stop(true);
+        for (const key of matchingKeys) {
+            const state = this.states.get(key);
+            if (!state) continue;
+
+            state.queue = [];
+            state.isPlaying = false;
+            state.player.stop(true);
+        }
     }
 
     /**
-     * Leaves the voice channel and cleans up all state for a guild.
+     * Leaves the voice channel and cleans up all state for a guild or specific key.
      *
-     * @param guildId - The Discord guild ID.
+     * @param guildIdOrKey - The Discord guild ID or unique state key.
      */
-    public leave(guildId: string): void {
-        this.stop(guildId);
+    public leave(guildIdOrKey: string): void {
+        this.stop(guildIdOrKey);
 
-        const state = this.states.get(guildId);
-        if (state) {
-            if (state.idleTimeout) clearTimeout(state.idleTimeout);
-            state.connection.destroy();
-            this.states.delete(guildId);
-        } else {
-            const existingConn = getVoiceConnection(guildId);
+        const matchingKeys = Array.from(this.states.keys()).filter(
+            (k) => k === guildIdOrKey || k.startsWith(`${guildIdOrKey}:`),
+        );
+
+        for (const key of matchingKeys) {
+            const state = this.states.get(key);
+            if (state) {
+                if (state.idleTimeout) clearTimeout(state.idleTimeout);
+                state.connection.destroy();
+                this.states.delete(key);
+            }
+        }
+
+        if (matchingKeys.length === 0) {
+            const existingConn = getVoiceConnection(guildIdOrKey);
             if (existingConn) {
                 existingConn.destroy();
             }
@@ -162,15 +183,15 @@ export class TTSService {
     }
 
     /**
-     * Processes next item in queue for a guild.
+     * Processes next item in queue for a guild or key.
      */
-    private processQueue(guildId: string): void {
-        const state = this.states.get(guildId);
+    private processQueue(key: string): void {
+        const state = this.states.get(key);
         if (!state) return;
 
         if (state.queue.length === 0) {
             state.isPlaying = false;
-            this.resetIdleTimeout(guildId);
+            this.resetIdleTimeout(key);
             return;
         }
 
@@ -214,22 +235,22 @@ export class TTSService {
             state.player.play(resource);
         } catch (error) {
             logger.error(error, `Error creating audio resource for URL: ${item.url}`);
-            this.processQueue(guildId);
+            this.processQueue(key);
         }
     }
 
-    private setupPlayerListeners(guildId: string, state: GuildTTSState): void {
+    private setupPlayerListeners(key: string, state: GuildTTSState): void {
         state.player.on(AudioPlayerStatus.Idle, () => {
-            this.processQueue(guildId);
+            this.processQueue(key);
         });
 
         state.player.on("error", (error) => {
-            logger.error(error, `Audio player error in guild ${guildId}`);
-            this.processQueue(guildId);
+            logger.error(error, `Audio player error for key ${key}`);
+            this.processQueue(key);
         });
     }
 
-    private setupConnectionListeners(guildId: string, connection: VoiceConnection): void {
+    private setupConnectionListeners(key: string, connection: VoiceConnection): void {
         connection.on(VoiceConnectionStatus.Disconnected, async () => {
             try {
                 await Promise.race([
@@ -237,18 +258,18 @@ export class TTSService {
                     entersState(connection, VoiceConnectionStatus.Connecting, 5_000),
                 ]);
             } catch {
-                logger.info(`Voice connection disconnected in guild ${guildId}`);
-                this.leave(guildId);
+                logger.info(`Voice connection disconnected for key ${key}`);
+                this.leave(key);
             }
         });
 
         connection.on(VoiceConnectionStatus.Destroyed, () => {
-            this.states.delete(guildId);
+            this.states.delete(key);
         });
     }
 
-    private resetIdleTimeout(guildId: string): void {
-        const state = this.states.get(guildId);
+    private resetIdleTimeout(key: string): void {
+        const state = this.states.get(key);
         if (!state) return;
 
         if (state.idleTimeout) clearTimeout(state.idleTimeout);
@@ -257,9 +278,9 @@ export class TTSService {
         state.idleTimeout = setTimeout(
             () => {
                 logger.info(
-                    `Auto disconnecting TTS voice channel in guild ${guildId} due to inactivity`,
+                    `Auto disconnecting TTS voice channel for key ${key} due to inactivity`,
                 );
-                this.leave(guildId);
+                this.leave(key);
             },
             5 * 60 * 1000,
         );

@@ -14,7 +14,16 @@ export const handleClientReady = async (
     targetChannelName?: string,
 ): Promise<void> => {
     const label = botName ? ` [${botName}]` : "";
-    logger.info(`Logged in as ${client.user.tag}${label}`);
+    logger.info(`Logged in as ${client.user.tag}`);
+
+    if (client.guilds.cache.size === 0) {
+        logger.warn(
+            `Bot${label} está conectado a la API de Discord pero NO está presente en ningún servidor (servidores: 0). ¡Asegúrate de invitar este bot a tu servidor de Discord con el enlace OAuth2!`,
+        );
+        return;
+    }
+
+    logger.info(`Bot${label} está conectado a ${client.guilds.cache.size} servidor(es).`);
 
     for (const [, guild] of client.guilds.cache) {
         try {
@@ -23,27 +32,32 @@ export const handleClientReady = async (
                 (c): c is VoiceBasedChannel => c?.isVoiceBased() ?? false,
             );
 
-            const targetVoice =
+            const targetVoiceChannel =
                 (targetChannelName
                     ? (voiceChannels.find(
-                          (c) => c.name.toLowerCase() === targetChannelName.toLowerCase(),
-                      ) ??
-                      voiceChannels.find((c) =>
-                          c.name.toLowerCase().includes(targetChannelName.toLowerCase()),
-                      ))
-                    : undefined) ??
-                voiceChannels.find((c) => c.name.toLowerCase().includes("general")) ??
-                voiceChannels.first();
+                        (c) => c.name.toLowerCase() === targetChannelName.toLowerCase() && c.client === client,
+                    ) ??
+                        voiceChannels.find((c) =>
+                            c.name.toLowerCase().includes(targetChannelName.toLowerCase()) && c.client === client,
+                        ))
+                    : undefined) ?? null
 
-            if (targetVoice) {
+            if (targetVoiceChannel) {
                 logger.info(
-                    `Auto-joining voice channel "${targetVoice.name}" in guild "${guild.name}" and speaking "Hola!"`,
+                    `Auto-conectando canal de voz "${targetVoiceChannel.name}" en servidor "${guild.name}" para bot${label} y reproduciendo "Hola!"`,
                 );
-                await ttsService.speak(targetVoice, "Hola!");
+                await ttsService.speak(targetVoiceChannel, "Hola!");
                 break;
+            } else {
+                logger.warn(
+                    `No se encontró un canal de voz adecuado en el servidor "${guild.name}" para el bot${label}.`,
+                );
             }
         } catch (error) {
-            logger.error(error, `Failed to auto-join voice channel in guild ${guild.name}`);
+            logger.error(
+                error,
+                `Fallo al auto-conectar al canal de voz en el servidor "${guild.name}" para bot${label}`,
+            );
         }
     }
 };
