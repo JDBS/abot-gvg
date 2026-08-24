@@ -75,19 +75,27 @@ export async function clearCommands(): Promise<void> {
 }
 
 /**
- * Deploys slash commands for configured Discord bots.
- * If clean flag is specified, clears existing commands before deploying.
+ * Deploys slash commands for configured Discord bots (only Bot de Ataque).
+ * If clean flag is specified, clears existing commands from all bots before deploying.
  */
 export async function deployCommands(options?: { clean?: boolean }): Promise<void> {
     if (options?.clean) {
         await clearCommands();
     }
 
-    const bots = getBots();
+    // Commands are deployed exclusively for the Ataque bot
+    const botsToDeploy = [
+        {
+            name: "Ataque",
+            clientId: env.CLIENT_ID_ATAQUE,
+            token: env.DISCORD_TOKEN_ATAQUE,
+            guildId: env.GUILD_ID_ATAQUE || env.GUILD_ID,
+        },
+    ];
 
     const commandList = commands.map((command) => command.data.toJSON());
 
-    for (const bot of bots) {
+    for (const bot of botsToDeploy) {
         const rest = new REST({ version: "10" }).setToken(bot.token);
         const isDummy = isDummyGuildId(bot.guildId);
 
