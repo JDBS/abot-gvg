@@ -4,12 +4,14 @@
     "type": "module",
     "private": true,
     "scripts": {
+        "isntall:ffmpeg": "node node_modules/ffmpeg-static/install.js",
         "dev": "bun run deploy && bun src/index.ts",
         "dev:watch": "bun run deploy && bun --watch src/index.ts",
         "deploy": "bun run src/deploy-commands.ts",
         "deploy:clean": "bun run src/deploy-commands.ts --clean",
         "build": "tsc",
-        "test": "tsx --test src/**/*.test.ts",
+        "test": "bun test",
+        "postinstall": "node node_modules/ffmpeg-static/install.js",
         "lint": "biome lint .",
         "format": "biome format --write .",
         "check": "biome check --write ."

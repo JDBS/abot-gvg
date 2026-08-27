@@ -23,7 +23,9 @@ const mockInteractionNoGuild = {
     },
 };
 
-await startCommand.execute(mockInteractionNoGuild as unknown as Parameters<typeof startCommand.execute>[0]);
+await startCommand.execute(
+    mockInteractionNoGuild as unknown as Parameters<typeof startCommand.execute>[0],
+);
 assert.ok(replyPayload, "Should reply to interaction");
 assert.equal(replyPayload.content, "Este comando solo se puede usar en un servidor.");
 assert.equal(replyPayload.ephemeral, true);
@@ -40,7 +42,9 @@ const mockInteractionInvalidOffset = {
     },
 };
 
-await startCommand.execute(mockInteractionInvalidOffset as unknown as Parameters<typeof startCommand.execute>[0]);
+await startCommand.execute(
+    mockInteractionInvalidOffset as unknown as Parameters<typeof startCommand.execute>[0],
+);
 assert.ok(replyPayload, "Should reply with error on invalid offset");
 assert.equal(replyPayload.ephemeral, true);
 assert.ok((replyPayload.content ?? "").includes("❌ Error al establecer el offset:"));

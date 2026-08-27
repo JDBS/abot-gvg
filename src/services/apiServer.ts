@@ -106,15 +106,17 @@ export function startApiServer(
                                 },
                             }),
                         );
-                    } catch (error: any) {
+                    } catch (error: unknown) {
                         logger.error(error, "Failed to process POST /api/action payload");
                         res.writeHead(400, { "Content-Type": "application/json" });
+                        const errorMessage =
+                            error instanceof Error
+                                ? error.message
+                                : "Invalid JSON payload or schema validation error";
                         res.end(
                             JSON.stringify({
                                 success: false,
-                                error:
-                                    error.message ||
-                                    "Invalid JSON payload or schema validation error",
+                                error: errorMessage,
                             }),
                         );
                     }
@@ -126,6 +128,17 @@ export function startApiServer(
         // 404 Fallback
         res.writeHead(404, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ success: false, error: "Endpoint not found" }));
+    });
+
+    server.on("error", (err: unknown) => {
+        const errorObj = err as { code?: string };
+        if (errorObj?.code === "EADDRINUSE") {
+            logger.error(
+                `El puerto ${port} ya está en uso por otro proceso. Cierra la instancia anterior o cambia la variable PORT en el archivo .env`,
+            );
+        } else {
+            logger.error(err, "Error en el servidor HTTP API");
+        }
     });
 
     server.listen(port, () => {
