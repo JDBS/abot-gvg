@@ -29,7 +29,7 @@ echo "📌 Gestor de paquetes detectado: $PKG_MGR"
 
 # 3. Instalación de librerías de encriptación de voz y Opus para @discordjs/voice
 echo "🔒 Instalando librerías de encriptación de voz (sodium, ciphers) y Opus..."
-$INSTALL_CMD libsodium-wrappers @noble/ciphers @stablelib/xchacha20poly1305 sodium-native @discordjs/opus
+$INSTALL_CMD libsodium-wrappers @noble/ciphers @stablelib/xchacha20poly1305 sodium-native sodium @discordjs/opus
 
 # 4. Asegurar permisos de ejecución en ffmpeg-static si existe en node_modules
 if [ -f "node_modules/ffmpeg-static/ffmpeg" ]; then
