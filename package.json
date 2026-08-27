@@ -4,6 +4,7 @@
     "type": "module",
     "private": true,
     "scripts": {
+        "discord:check-deps": "node src/discord-check-dependencies.ts",
         "isntall:ffmpeg": "node node_modules/ffmpeg-static/install.js",
         "dev": "bun run deploy && bun src/index.ts",
         "dev:watch": "bun run deploy && bun --watch src/index.ts",
