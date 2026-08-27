@@ -210,33 +210,35 @@ export class TTSService {
         if (!item) return;
 
         try {
-            let resource: ReturnType<typeof createAudioResource>;
             const speed = item.speed ?? 1.0;
+            const ffmpegArgs = [
+                "-i",
+                item.url,
+            ];
+
             if (speed !== 1.0) {
-                const ffmpegProcess = spawn(ffmpegPath || "ffmpeg", [
-                    "-i",
-                    item.url,
-                    "-af",
-                    `atempo=${speed}`,
-                    "-f",
-                    "s16le",
-                    "-ar",
-                    "48000",
-                    "-ac",
-                    "2",
-                    "pipe:1",
-                ]);
-
-                ffmpegProcess.on("error", (err) => {
-                    logger.error(err, "FFmpeg process error for TTS audio stream");
-                });
-
-                resource = createAudioResource(ffmpegProcess.stdout, {
-                    inputType: StreamType.Raw,
-                });
-            } else {
-                resource = createAudioResource(item.url);
+                ffmpegArgs.push("-af", `atempo=${speed}`);
             }
+
+            ffmpegArgs.push(
+                "-f",
+                "s16le",
+                "-ar",
+                "48000",
+                "-ac",
+                "2",
+                "pipe:1",
+            );
+
+            const ffmpegProcess = spawn(ffmpegPath || "ffmpeg", ffmpegArgs);
+
+            ffmpegProcess.on("error", (err) => {
+                logger.error(err, "FFmpeg process error for TTS audio stream");
+            });
+
+            const resource = createAudioResource(ffmpegProcess.stdout, {
+                inputType: StreamType.Raw,
+            });
             state.player.play(resource);
         } catch (error) {
             logger.error(error, "Error creating audio resource for TTS playback");
