@@ -34,4 +34,4 @@ RUN bun install
 COPY . .
 
 # 5. Execute npm run dev for running process
-CMD ["npm", "run", "dev"]
+CMD ["bun", "run", "dev"]
