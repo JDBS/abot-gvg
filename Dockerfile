@@ -9,9 +9,8 @@ WORKDIR /app
 
 # 2. Specify internal and external ports
 # Default internal communication port (can be overridden at runtime via ENV PORT)
-ENV PORT=5000
 # Expose internal & external communication ports (5000 primary API REST port, 3000 fallback port)
-EXPOSE 5000
+EXPOSE ${PORT}
 EXPOSE 3000
 
 # 3. Install dependency requirements (matching scripts/install-requirements.sh)
