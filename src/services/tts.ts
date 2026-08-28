@@ -259,9 +259,9 @@ export class TTSService {
 
             state.player.once(AudioPlayerStatus.Playing, onPlaying);
             state.player.once(AudioPlayerStatus.Idle, cleanup);
-            state.player.once(AudioPlayerStatus.Idle, () => console.log('audio idle'));
-            state.player.once(AudioPlayerStatus.Buffering, () => console.log('audio buffering'));
-            state.player.once(AudioPlayerStatus.Playing, () => console.log('audio playing'));
+            state.player.once(AudioPlayerStatus.Idle, () => console.log('audio idle' + new Date().toISOString()));
+            state.player.once(AudioPlayerStatus.Buffering, () => console.log('audio buffering' + new Date().toISOString()));
+            state.player.once(AudioPlayerStatus.Playing, () => console.log('audio playing' + new Date().toISOString()));
             state.player.once("error", cleanup);
 
             console.log(`[TTS] Processing queue for key ${key} - ${state.queue.length} items remaining`);
