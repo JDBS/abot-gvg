@@ -29,7 +29,7 @@ export class TTSService {
     private static instance: TTSService;
     private states = new Map<string, GuildTTSState>();
 
-    private constructor() {}
+    private constructor() { }
 
     /**
      * Gets the singleton instance of TTSService.
@@ -261,10 +261,15 @@ export class TTSService {
             state.player.once(AudioPlayerStatus.Idle, cleanup);
             state.player.once("error", cleanup);
 
+            console.log(`[TTS] Processing queue for key ${key} - ${state.queue.length} items remaining`);
+            console.log(`[TTS] creating audio resource`);
             const resource = createAudioResource(ffmpegProcess.stdout, {
                 inputType: StreamType.Raw,
             });
+            console.log(`[TTS] audio resource created`);
+            console.log(`[TTS] playing audio`);
             state.player.play(resource);
+            console.log(`audio playing`);
         } catch (error) {
             logger.error(error, "Error creating audio resource for TTS playback");
             this.processQueue(key);
