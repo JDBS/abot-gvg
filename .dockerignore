@@ -1,0 +1,8 @@
+node_modules
+npm-debug.log
+bun.lock
+.env
+.git
+.gitignore
+dist
+*.test.ts
