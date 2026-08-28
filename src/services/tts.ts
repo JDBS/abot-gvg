@@ -29,7 +29,7 @@ export class TTSService {
     private static instance: TTSService;
     private states = new Map<string, GuildTTSState>();
 
-    private constructor() { }
+    private constructor() {}
 
     /**
      * Gets the singleton instance of TTSService.
@@ -226,15 +226,7 @@ export class TTSService {
                 ffmpegArgs.push("-af", `atempo=${speed}`);
             }
 
-            ffmpegArgs.push(
-                "-f",
-                "s16le",
-                "-ar",
-                "48000",
-                "-ac",
-                "2",
-                "pipe:1",
-            );
+            ffmpegArgs.push("-f", "s16le", "-ar", "48000", "-ac", "2", "pipe:1");
 
             const ffmpegProcess = spawn(ffmpegPath || "ffmpeg", ffmpegArgs);
 
@@ -250,7 +242,9 @@ export class TTSService {
 
             let bufferingTimeout: ReturnType<typeof setTimeout> | undefined = setTimeout(() => {
                 if (state.player.state.status === AudioPlayerStatus.Buffering) {
-                    logger.warn("TTS buffering timeout reached (remote stream stalled). Skipping item.");
+                    logger.warn(
+                        "TTS buffering timeout reached (remote stream stalled). Skipping item.",
+                    );
                     cleanup();
                     state.player.stop(true);
                 }
