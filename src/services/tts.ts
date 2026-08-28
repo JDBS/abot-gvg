@@ -212,6 +212,12 @@ export class TTSService {
         try {
             const speed = item.speed ?? 1.0;
             const ffmpegArgs = [
+                "-reconnect",
+                "1",
+                "-reconnect_streamed",
+                "1",
+                "-reconnect_delay_max",
+                "5",
                 "-i",
                 item.url,
             ];
@@ -235,6 +241,31 @@ export class TTSService {
             ffmpegProcess.on("error", (err) => {
                 logger.error(err, "FFmpeg process error for TTS audio stream");
             });
+
+            const cleanup = () => {
+                if (!ffmpegProcess.killed) {
+                    ffmpegProcess.kill("SIGKILL");
+                }
+            };
+
+            let bufferingTimeout: ReturnType<typeof setTimeout> | undefined = setTimeout(() => {
+                if (state.player.state.status === AudioPlayerStatus.Buffering) {
+                    logger.warn("TTS buffering timeout reached (remote stream stalled). Skipping item.");
+                    cleanup();
+                    state.player.stop(true);
+                }
+            }, 10_000);
+
+            const onPlaying = () => {
+                if (bufferingTimeout) {
+                    clearTimeout(bufferingTimeout);
+                    bufferingTimeout = undefined;
+                }
+            };
+
+            state.player.once(AudioPlayerStatus.Playing, onPlaying);
+            state.player.once(AudioPlayerStatus.Idle, cleanup);
+            state.player.once("error", cleanup);
 
             const resource = createAudioResource(ffmpegProcess.stdout, {
                 inputType: StreamType.Raw,
