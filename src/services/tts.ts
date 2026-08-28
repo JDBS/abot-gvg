@@ -235,6 +235,7 @@ export class TTSService {
             });
 
             const cleanup = () => {
+                console.log(`[TTS] audio playing - cleaning up`);
                 if (!ffmpegProcess.killed) {
                     ffmpegProcess.kill("SIGKILL");
                 }
@@ -251,6 +252,7 @@ export class TTSService {
             }, 10_000);
 
             const onPlaying = () => {
+                console.log(`[TTS] playing audio`);
                 if (bufferingTimeout) {
                     clearTimeout(bufferingTimeout);
                     bufferingTimeout = undefined;
@@ -267,9 +269,8 @@ export class TTSService {
                 inputType: StreamType.Raw,
             });
             console.log(`[TTS] audio resource created`);
-            console.log(`[TTS] playing audio`);
+            console.log(`[TTS] player.play`);
             state.player.play(resource);
-            console.log(`audio playing`);
         } catch (error) {
             logger.error(error, "Error creating audio resource for TTS playback");
             this.processQueue(key);
