@@ -29,7 +29,7 @@ export class TTSService {
     private static instance: TTSService;
     private states = new Map<string, GuildTTSState>();
 
-    private constructor() { }
+    private constructor() {}
 
     /**
      * Gets the singleton instance of TTSService.
@@ -152,6 +152,15 @@ export class TTSService {
             const state = this.states.get(key);
             if (!state) continue;
 
+            if (state.bufferingTimeout) {
+                clearTimeout(state.bufferingTimeout);
+                state.bufferingTimeout = undefined;
+            }
+            if (state.currentProcess && !state.currentProcess.killed) {
+                state.currentProcess.kill("SIGKILL");
+                state.currentProcess = undefined;
+            }
+
             state.queue = [];
             state.isPlaying = false;
             state.player.stop(true);
@@ -174,6 +183,10 @@ export class TTSService {
             const state = this.states.get(key);
             if (state) {
                 if (state.idleTimeout) clearTimeout(state.idleTimeout);
+                if (state.bufferingTimeout) clearTimeout(state.bufferingTimeout);
+                if (state.currentProcess && !state.currentProcess.killed) {
+                    state.currentProcess.kill("SIGKILL");
+                }
                 state.connection.destroy();
                 this.states.delete(key);
             }
@@ -194,6 +207,16 @@ export class TTSService {
         const state = this.states.get(key);
         if (!state) return;
 
+        if (state.currentProcess && !state.currentProcess.killed) {
+            state.currentProcess.kill("SIGKILL");
+            state.currentProcess = undefined;
+        }
+
+        if (state.bufferingTimeout) {
+            clearTimeout(state.bufferingTimeout);
+            state.bufferingTimeout = undefined;
+        }
+
         if (state.queue.length === 0) {
             state.isPlaying = false;
             this.resetIdleTimeout(key);
@@ -212,6 +235,8 @@ export class TTSService {
         try {
             const speed = item.speed ?? 1.0;
             const ffmpegArgs = [
+                "-user_agent",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
                 "-reconnect",
                 "1",
                 "-reconnect_streamed",
@@ -229,47 +254,28 @@ export class TTSService {
             ffmpegArgs.push("-f", "s16le", "-ar", "48000", "-ac", "2", "pipe:1");
 
             const ffmpegProcess = spawn(ffmpegPath || "ffmpeg", ffmpegArgs);
+            state.currentProcess = ffmpegProcess;
 
             ffmpegProcess.on("error", (err) => {
                 logger.error(err, "FFmpeg process error for TTS audio stream");
             });
 
-            const cleanup = () => {
-                console.log(`[TTS] audio playing - cleaning up`);
-                if (!ffmpegProcess.killed) {
-                    ffmpegProcess.kill("SIGKILL");
-                }
-            };
-
-            let bufferingTimeout: ReturnType<typeof setTimeout> | undefined = setTimeout(() => {
+            state.bufferingTimeout = setTimeout(() => {
                 if (state.player.state.status === AudioPlayerStatus.Buffering) {
                     logger.warn(
                         "TTS buffering timeout reached (remote stream stalled). Skipping item.",
                     );
-                    cleanup();
+                    if (state.currentProcess && !state.currentProcess.killed) {
+                        state.currentProcess.kill("SIGKILL");
+                        state.currentProcess = undefined;
+                    }
                     state.player.stop(true);
                 }
             }, 10_000);
 
-            const onPlaying = () => {
-                console.log(`[TTS] playing audio`);
-                if (bufferingTimeout) {
-                    clearTimeout(bufferingTimeout);
-                    bufferingTimeout = undefined;
-                }
-            };
-
-            state.player.once(AudioPlayerStatus.Playing, onPlaying);
-            state.player.once(AudioPlayerStatus.Idle, cleanup);
-            state.player.once("error", cleanup);
-
-            console.log(`[TTS] Processing queue for key ${key} - ${state.queue.length} items remaining`);
-            console.log(`[TTS] creating audio resource`);
             const resource = createAudioResource(ffmpegProcess.stdout, {
                 inputType: StreamType.Raw,
             });
-            console.log(`[TTS] audio resource created`);
-            console.log(`[TTS] player.play`);
             state.player.play(resource);
         } catch (error) {
             logger.error(error, "Error creating audio resource for TTS playback");
@@ -278,12 +284,35 @@ export class TTSService {
     }
 
     private setupPlayerListeners(key: string, state: GuildTTSState): void {
+        state.player.on(AudioPlayerStatus.Playing, () => {
+            if (state.bufferingTimeout) {
+                clearTimeout(state.bufferingTimeout);
+                state.bufferingTimeout = undefined;
+            }
+        });
+
         state.player.on(AudioPlayerStatus.Idle, () => {
+            if (state.bufferingTimeout) {
+                clearTimeout(state.bufferingTimeout);
+                state.bufferingTimeout = undefined;
+            }
+            if (state.currentProcess && !state.currentProcess.killed) {
+                state.currentProcess.kill("SIGKILL");
+                state.currentProcess = undefined;
+            }
             this.processQueue(key);
         });
 
         state.player.on("error", (error) => {
             logger.error(error, "Audio player error during TTS playback");
+            if (state.bufferingTimeout) {
+                clearTimeout(state.bufferingTimeout);
+                state.bufferingTimeout = undefined;
+            }
+            if (state.currentProcess && !state.currentProcess.killed) {
+                state.currentProcess.kill("SIGKILL");
+                state.currentProcess = undefined;
+            }
             this.processQueue(key);
         });
     }

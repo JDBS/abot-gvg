@@ -1,3 +1,4 @@
+import type { ChildProcess } from "node:child_process";
 import type { AudioPlayer, VoiceConnection } from "@discordjs/voice";
 import * as googleTTS from "google-tts-api";
 
@@ -34,6 +35,8 @@ export interface GuildTTSState {
     queue: QueueItem[];
     isPlaying: boolean;
     idleTimeout?: ReturnType<typeof setTimeout>;
+    bufferingTimeout?: ReturnType<typeof setTimeout>;
+    currentProcess?: ChildProcess;
 }
 
 /**
